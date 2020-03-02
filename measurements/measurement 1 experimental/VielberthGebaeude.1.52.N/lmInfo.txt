@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.1.52;Treppe;branch;VielberthGebaeude;1;1843.00;389.00;DATA;N;false
