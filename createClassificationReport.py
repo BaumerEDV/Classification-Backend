@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn import preprocessing
+from sklearn.naive_bayes import MultinomialNB
 
 EXPORT_FILE_NAME = "combined_data.csv"
 
@@ -15,10 +16,9 @@ master_df.drop(['Unnamed: 0', 'timestamp', 'nodeId'], axis=1, inplace=True)
 min_max_scaler = preprocessing.MinMaxScaler()
 master_df = pd.DataFrame(min_max_scaler.fit_transform(master_df), columns=master_df.columns, index=master_df.index) #https://stackoverflow.com/questions/26414913/normalize-columns-of-pandas-data-frame
 
-
 X_train, X_test, y_train, y_test = train_test_split(master_df, classification_target, test_size=0.33, stratify=classification_target, random_state=42) #https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
 
-for classifier in [KNeighborsClassifier(n_neighbors=3), MLPClassifier(hidden_layer_sizes=140, max_iter=500, random_state=42)]:
+for classifier in [KNeighborsClassifier(n_neighbors=3), MLPClassifier(hidden_layer_sizes=140, max_iter=500, random_state=42), MultinomialNB()]:
     classifier.fit(X_train, y_train)
     y_pred = classifier.predict(X_test)
     print(accuracy_score(y_test, y_pred))
