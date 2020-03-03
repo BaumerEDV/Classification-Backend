@@ -15,12 +15,8 @@ def get_file_in_directory_with_prefix(directory, prefix):
 
 
 def turn_wifi_readings_into_master_form(wifi_df):
-    result = wifi_df.pivot(index='timestamp', columns='bssid', values='dbm')
-    #result.columns.name='timestamp'
-    #result.drop('timestamp')
-    #print(result.first_valid_index())
-    print(result.axes)
-    #TODO: shape this properly
+    result=wifi_df.pivot(index='timestamp', columns='bssid', values='dbm').reset_index().rename_axis(None, axis=1)
+    #Source: https://stackoverflow.com/questions/60501660/im-trying-to-reshape-my-data-from-a-long-format-to-something-that-isnt-quite-t?noredirect=1#comment107032085_60501660
     return result
 
 
