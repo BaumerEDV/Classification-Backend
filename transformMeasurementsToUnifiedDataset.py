@@ -1,11 +1,11 @@
 import os
 import pandas as pd
 import glob
-import numpy as np
 
 MEASUREMENTS_FOLDER = os.fsencode("measurements")
 PRESSURE_FILE_PREFIX = "pressure_"
 WIFI_FILE_PREFIX = "wifi_"
+EXPORT_FILE_NAME = "combined_data.csv"
 
 
 def get_file_in_directory_with_prefix(directory, prefix):
@@ -21,11 +21,18 @@ def turn_wifi_readings_into_master_form(wifi_df):
 
 
 def combine_pressure_readings_and_wifi_data(pressure_df, wifi_df):
-    def get_pressure_closest_to_timestamp(timestamp):
-        return pressure_df.iloc[(pressure_df['timestamp']-timestamp).abs().argsort()[:1]]
+    def get_pressure_for_data_row(row):
+        result = pressure_df.iloc[(pressure_df['timestamp'] - row['timestamp']).abs().argsort()[:1]]['pressure']
+        result = result.iloc[0]
+        return result
         # Source https://codereview.stackexchange.com/questions/204549/lookup-closest-value-in-pandas-dataframe
-    #wifi_df['pressure'] = get_pressure_closest_to_timestamp(wifi_df['timestamp'])
+    wifi_df['pressure'] = wifi_df.apply (lambda row: get_pressure_for_data_row(row), axis=1)
     return wifi_df
+
+
+def apply_nodeId_to_df(nodeId, df):
+    df['nodeId'] = nodeId
+
 
 master_df = pd.DataFrame(columns=['timestamp', 'nodeId', 'pressure'])
 
@@ -41,7 +48,10 @@ for measurement_series_name in os.listdir(MEASUREMENTS_FOLDER):
         wifi_raw_df = pd.read_csv(wifi_filepath, sep=";")
         pressure_raw_df = pd.read_csv(pressure_filepath, sep=";")
         wifi_master_form_df = turn_wifi_readings_into_master_form(wifi_raw_df)
-        pd.set_option('display.max_columns', None)
-        #print(wifi_master_form_df)
         wifi_master_form_df = combine_pressure_readings_and_wifi_data(pressure_raw_df, wifi_master_form_df)
-        exit(0)
+        apply_nodeId_to_df(node_name, wifi_master_form_df)
+        master_df = pd.merge(master_df, wifi_master_form_df, how='outer')
+
+master_df.to_csv(EXPORT_FILE_NAME)
+
+# TODO: make this not the most disgusting code ever
