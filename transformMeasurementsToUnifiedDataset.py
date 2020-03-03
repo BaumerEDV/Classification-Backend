@@ -15,13 +15,21 @@ def get_file_in_directory_with_prefix(directory, prefix):
 
 
 def turn_wifi_readings_into_master_form(wifi_df):
-    all_picked_up_mac_addresses = wifi_df.bssid.unique()
-    timestamps = wifi_df.timestamp.unique()
-    result_df = pd.DataFrame(columns=np.append(['timestamp', 'nodeId'], all_picked_up_mac_addresses))
-    for timestamp in timestamps:
-        pass
-    print(result_df)
+    result = wifi_df.pivot(index='timestamp', columns='bssid', values='dbm')
+    #result.columns.name='timestamp'
+    #result.drop('timestamp')
+    #print(result.first_valid_index())
+    print(result.axes)
+    #TODO: shape this properly
+    return result
 
+
+def combine_pressure_readings_and_wifi_data(pressure_df, wifi_df):
+    def get_pressure_closest_to_timestamp(timestamp):
+        return pressure_df.iloc[(pressure_df['timestamp']-timestamp).abs().argsort()[:1]]
+        # Source https://codereview.stackexchange.com/questions/204549/lookup-closest-value-in-pandas-dataframe
+    #wifi_df['pressure'] = get_pressure_closest_to_timestamp(wifi_df['timestamp'])
+    return wifi_df
 
 master_df = pd.DataFrame(columns=['timestamp', 'nodeId', 'pressure'])
 
@@ -37,3 +45,7 @@ for measurement_series_name in os.listdir(MEASUREMENTS_FOLDER):
         wifi_raw_df = pd.read_csv(wifi_filepath, sep=";")
         pressure_raw_df = pd.read_csv(pressure_filepath, sep=";")
         wifi_master_form_df = turn_wifi_readings_into_master_form(wifi_raw_df)
+        pd.set_option('display.max_columns', None)
+        #print(wifi_master_form_df)
+        wifi_master_form_df = combine_pressure_readings_and_wifi_data(pressure_raw_df, wifi_master_form_df)
+        exit(0)
