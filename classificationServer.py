@@ -16,35 +16,8 @@ import random, time
 #
 
 
-# This is your task which will run its its own process. You can modify it to have your desired args and kwargs and
-# report back to the manager dictionary 'd' or any other manager resource as necessary.
-# Read the documentation for multiprocessing to find the facilities provided by multiprocess.Manager
-def task(d, sessionid, number, repeatcount):
-    """
-    This function is a stub funciton which is incrementing a success counter in a random time between 0 to 2 seconds
-    with a 2% chance that the failure counter will be incremented instead of the success. After each success or failure
-    the manager dictionary 'd' is updated with the session's progress.
-    You should replace this with an actual task and update necessary information about the task into the manager dict
-    """
-    success = 0
-    fail = 0
-    while success+fail<repeatcount:
-        time.sleep(random.random()*2.0)
-        if (random.random()*100)>98.0:
-            fail+=1
-        else:
-            success+=1
-        d[sessionid] = {
-            'success': success,
-            'fail': fail,
-            'number': number,
-            'repeatcount': repeatcount
-            }
-    return
-
-
 def another_task():
-    time.sleep(random.random()*5.0)
+    time.sleep(random.random()*10.0)
     return "Task Result"
 
 
