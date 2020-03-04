@@ -9,6 +9,10 @@ import json
 import cgi
 import random, time
 
+STATUS_CODE_NOT_IMPLEMENTED = 501
+STATUS_CODE_OK = 200
+STATUS_CODE_BAD_REQUEST = 400
+
 # Resources to read
 #
 # http://stackoverflow.com/a/1239252/603280
@@ -16,16 +20,17 @@ import random, time
 #
 
 
-def another_task():
+def get_classification_result_as_dict(measurement):
     time.sleep(random.random()*10.0)
-    return "Task Result"
+    result = {"prediction": random.random()}
+    return result
 
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
 
 
-# This is the HTTP Server which provides a simple JSON REST API
+# This is the HTTP Handler which provides a simple JSON REST API
 class MyRequestHandler(BaseHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
@@ -38,51 +43,29 @@ class MyRequestHandler(BaseHTTPRequestHandler):
     # GET sends back the complete contents of the manager dictionary 'd' as JSON.
     # This can be modified to any desired response (should be JSON)
     def do_GET(self):
-        self._set_headers()
-        self.wfile.write(json.dumps(d))
+        self.send_response(STATUS_CODE_NOT_IMPLEMENTED)
+        self.end_headers()
+        return
 
-    # POST echoes the message adding a JSON field
+    # POST answers the request for wifi data location prediction
     def do_POST(self):
-        #ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-        ctype, pdict = cgi.parse_header(self.headers['content-type'])
+        content_type, pdict = cgi.parse_header(self.headers['content-type'])
 
         # refuse to receive non-json content
-        if ctype != 'application/json':
-            self.send_response(400)
+        if content_type != 'application/json':
+            self.send_response(STATUS_CODE_BAD_REQUEST)
             self.end_headers()
             return
 
-        # read the message and convert it into a python dictionary
-        #length = int(self.headers.getheader('content-length'))
+        # read the wifi data and convert it into a python dictionary
         length = int(self.headers['content-length'])
-        message = json.loads(self.rfile.read(length))
+        measurement = json.loads(self.rfile.read(length))
 
-        #if message.has_key('runtask'):
-        if 'runtask' in message:
-            """
-            To run a new task simply send the following JSON as POST:
-            {"runtask": true, "sessionid": "ANY-UNIQUE-NAME-FOR-YOUR-TASK", 'arg1', 'repeatcount'}
-            Curl Syntax:
-            curl --data "{\"runtask\":\"true\", \"sessionid\":\"session-5\", \"number\":\"+\", \"repeatcount\": 100 }" \
-            --header "Content-Type: application/json" http://localhost:8111
-            """
-            print("Starting task with %s, %s, %s" % (message['sessionid'], message['number'], message['repeatcount']))
-            #result = p.apply_async(task, (d, message['sessionid'], message['number'], message['repeatcount']))
-            result = another_task()
-            message['task-result'] = result
-        #elif message.has_key('sessionid'):
-        elif 'sessionid' in message:
-            """
-            To see the status of a currently running task (or completed task) simpley POST the following JSON
-            {"sessionid": "THE-UNIQUE-NAME-FOR-YOUR-TASK"}
-            Curl Syntax:
-            curl --data "{\"sessionid\":\"session-5\"}" --header "Content-Type: application/json" http://localhost:8111
-            """
-            message['status'] = d[message['sessionid']]
+        result = get_classification_result_as_dict(measurement)
 
         # send the message back
         self._set_headers()
-        self.wfile.write(json.dumps(message).encode())
+        self.wfile.write(json.dumps(result).encode())
 
 
 def run(server_class=ThreadingSimpleServer, handler_class=MyRequestHandler, port=8111):
@@ -93,11 +76,16 @@ def run(server_class=ThreadingSimpleServer, handler_class=MyRequestHandler, port
     httpd.serve_forever()
 
 
+"""
+            To run a new task simply send the following JSON as POST:
+            {"runtask": true, "sessionid": "ANY-UNIQUE-NAME-FOR-YOUR-TASK", 'arg1', 'repeatcount'}
+            Curl Syntax:
+            curl --data "{\"runtask\":\"true\", \"sessionid\":\"session-5\", \"number\":\"+\", \"repeatcount\": 100 }" \
+            --header "Content-Type: application/json" http://localhost:8111
+"""
+
 if __name__ == "__main__":
-    # Run the task broker.
     # Initializing our global resources.
-    global p, m, d
-    p = Pool()
-    m = Manager()
-    d = m.dict()
+
+    # Run the task broker.
     run()
