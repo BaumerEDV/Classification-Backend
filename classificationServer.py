@@ -33,15 +33,14 @@ class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
 # This is the HTTP Handler which provides a simple JSON REST API
 class MyRequestHandler(BaseHTTPRequestHandler):
     def _set_headers(self):
-        self.send_response(200)
+        self.send_response(STATUS_CODE_OK)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
 
     def do_HEAD(self):
         self._set_headers()
 
-    # GET sends back the complete contents of the manager dictionary 'd' as JSON.
-    # This can be modified to any desired response (should be JSON)
+    # this API doesn't handle GET responses
     def do_GET(self):
         self.send_response(STATUS_CODE_NOT_IMPLEMENTED)
         self.end_headers()
@@ -63,7 +62,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
         result = get_classification_result_as_dict(measurement)
 
-        # send the message back
+        # send the answer as json
         self._set_headers()
         self.wfile.write(json.dumps(result).encode())
 
