@@ -1,9 +1,10 @@
 #based on: https://gist.github.com/fahadysf/d80b99685ea3cfe3de4631f60e0136cc
+#and https://gist.github.com/gnilchee/246474141cbe588eb9fb
 
 from multiprocessing import Pool, Manager
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import socketserver
+from socketserver import ThreadingMixIn
 import json
 import cgi
 import random, time
@@ -42,8 +43,17 @@ def task(d, sessionid, number, repeatcount):
     return
 
 
+def another_task():
+    time.sleep(random.random()*5.0)
+    return "Task Result"
+
+
+class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
+    pass
+
+
 # This is the HTTP Server which provides a simple JSON REST API
-class Server(BaseHTTPRequestHandler):
+class MyRequestHandler(BaseHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -84,7 +94,9 @@ class Server(BaseHTTPRequestHandler):
             --header "Content-Type: application/json" http://localhost:8111
             """
             print("Starting task with %s, %s, %s" % (message['sessionid'], message['number'], message['repeatcount']))
-            result = p.apply_async(task, (d, message['sessionid'], message['number'], message['repeatcount']))
+            #result = p.apply_async(task, (d, message['sessionid'], message['number'], message['repeatcount']))
+            result = another_task()
+            message['task-result'] = result
         #elif message.has_key('sessionid'):
         elif 'sessionid' in message:
             """
@@ -100,7 +112,7 @@ class Server(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(message).encode())
 
 
-def run(server_class=HTTPServer, handler_class=Server, port=8111):
+def run(server_class=ThreadingSimpleServer, handler_class=MyRequestHandler, port=8111):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
 
