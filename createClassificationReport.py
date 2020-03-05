@@ -8,6 +8,12 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import StratifiedKFold
 
 EXPORT_FILE_NAME = "combined_data.csv"
+EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
+
+
+def save_feature_arry_column_order(feature_array):
+    feature_array[[False] * len(feature_array)].to_csv(EXPORT_FEATURE_VECTOR_FILE_NAME, index=False)
+
 
 master_df = pd.read_csv(EXPORT_FILE_NAME)
 print("min dBm: " + str(min(master_df.min(axis=1))))
@@ -18,6 +24,8 @@ min_max_scaler = preprocessing.MinMaxScaler()
 master_df = pd.DataFrame(min_max_scaler.fit_transform(master_df), columns=master_df.columns, index=master_df.index) #https://stackoverflow.com/questions/26414913/normalize-columns-of-pandas-data-frame
 
 X_train, X_test, y_train, y_test = train_test_split(master_df, classification_target, test_size=0.33, stratify=classification_target, random_state=36) #https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+
+save_feature_arry_column_order(X_train)
 
 classifiers = [
     {

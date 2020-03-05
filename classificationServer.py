@@ -20,7 +20,7 @@ STATUS_CODE_BAD_REQUEST = 400
 #
 
 
-def get_classification_result_as_dict(measurement):
+def get_classification_result_as_dict(measurement_json):
     time.sleep(random.random()*10.0)
     result = {"prediction": random.random()}
     return result
