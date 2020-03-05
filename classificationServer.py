@@ -8,10 +8,12 @@ from socketserver import ThreadingMixIn
 import json
 import cgi
 import random, time
+import pandas as pd
 
 STATUS_CODE_NOT_IMPLEMENTED = 501
 STATUS_CODE_OK = 200
 STATUS_CODE_BAD_REQUEST = 400
+EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
 
 # Resources to read
 #
@@ -20,9 +22,13 @@ STATUS_CODE_BAD_REQUEST = 400
 #
 
 
-def get_classification_result_as_dict(measurement_json):
+def get_classification_result_as_dict(measurement_dict):
     time.sleep(random.random()*10.0)
     result = {"prediction": random.random()}
+    measurement_df = pd.DataFrame([measurement_dict])
+    #TODO: merge the feature vector properly
+    feature_vector = features_head.merge(measurement_df, how="left")
+    print(measurement_df)
     return result
 
 
@@ -79,12 +85,13 @@ def run(server_class=ThreadingSimpleServer, handler_class=MyRequestHandler, port
             To run a new task simply send the following JSON as POST:
             {"runtask": true, "sessionid": "ANY-UNIQUE-NAME-FOR-YOUR-TASK", 'arg1', 'repeatcount'}
             Curl Syntax:
-            curl --data "{\"runtask\":\"true\", \"sessionid\":\"session-5\", \"number\":\"+\", \"repeatcount\": 100 }" \
-            --header "Content-Type: application/json" http://localhost:8111
+            curl --data "{\"model\":\"MD-5\", \"00:a0:57:30:bd:c8\":\"-55\" }" --header "Content-Type: application/json" http://localhost:8111
 """
 
 if __name__ == "__main__":
     # Initializing our global resources.
-
+    global classifier, features_head
+    features_head = pd.read_csv(EXPORT_FEATURE_VECTOR_FILE_NAME)
+    print(features_head)
     # Run the task broker.
     run()
