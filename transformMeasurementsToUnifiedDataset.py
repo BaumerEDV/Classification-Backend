@@ -20,6 +20,12 @@ def turn_wifi_readings_into_master_form(wifi_df):
     return result
 
 
+def remove_bssids_not_from_university(wifi_df):
+    regexPattern = "\w\w:a0:57:\w\w:\w\w:\w\w"
+    filter = wifi_df['bssid'].str.contains(regexPattern)
+    return wifi_df[filter]
+
+
 def combine_pressure_readings_and_wifi_data(pressure_df, wifi_df):
     def get_pressure_for_data_row(row):
         result = pressure_df.iloc[(pressure_df['timestamp'] - row['timestamp']).abs().argsort()[:1]]['pressure']
@@ -46,6 +52,7 @@ for measurement_series_name in os.listdir(MEASUREMENTS_FOLDER):
         wifi_filepath = get_file_in_directory_with_prefix(measurement_path, WIFI_FILE_PREFIX)
         pressure_filepath = get_file_in_directory_with_prefix(measurement_path, PRESSURE_FILE_PREFIX)
         wifi_raw_df = pd.read_csv(wifi_filepath, sep=";")
+        wifi_raw_df = remove_bssids_not_from_university(wifi_raw_df)
         pressure_raw_df = pd.read_csv(pressure_filepath, sep=";")
         wifi_master_form_df = turn_wifi_readings_into_master_form(wifi_raw_df)
         wifi_master_form_df = combine_pressure_readings_and_wifi_data(pressure_raw_df, wifi_master_form_df)
