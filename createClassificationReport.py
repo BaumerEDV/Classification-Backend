@@ -74,12 +74,12 @@ for classifier_package in classifiers:
 """""
 min dBm: -97.0
 K(3) Nearest Neighbor: 0.9433962264150944
-Feed Forward Neural Network: 0.9245283018867925
+Feed Forward Neural Network: 0.9056603773584906
 Multinomial Naive Bayes: 0.7924528301886793
 doing 5-fold cross validation now
-K(3) Nearest Neighbor: [0.875, 0.95, 0.9487179487179487, 0.8974358974358975]
-Feed Forward Neural Network: [0.925, 0.975, 0.9230769230769231, 0.8717948717948718]
-Multinomial Naive Bayes: [0.8, 0.825, 0.7435897435897436, 0.717948717948718]
+K(3) Nearest Neighbor: [0.875, 0.975, 0.9230769230769231, 0.9487179487179487]
+Feed Forward Neural Network: [0.95, 1.0, 0.9487179487179487, 0.8461538461538461]
+Multinomial Naive Bayes: [0.8, 0.825, 0.7948717948717948, 0.6666666666666666]
 
 Process finished with exit code 0
 """""
