@@ -19,6 +19,7 @@ master_df = pd.read_csv(EXPORT_FILE_NAME)
 print("min dBm: " + str(min(master_df.min(axis=1))))
 master_df.fillna(-100, inplace=True) #-85 was the best so far? use -100 though
 classification_target = master_df['nodeId']
+print(master_df.iloc[0].to_dict())
 master_df.drop(['Unnamed: 0', 'timestamp', 'nodeId'], axis=1, inplace=True)
 min_max_scaler = preprocessing.MinMaxScaler()
 master_df = pd.DataFrame(min_max_scaler.fit_transform(master_df), columns=master_df.columns, index=master_df.index) #https://stackoverflow.com/questions/26414913/normalize-columns-of-pandas-data-frame
@@ -105,4 +106,13 @@ for i in range(len(probabilities)):
         print(classifier.classes_[k] + ": " + str(probability_set[k]))
 """""
 
-
+#at this point save the best classifier using all the training data; as well as the scaler
+classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500, random_state=42)
+#classifier = KNeighborsClassifier(n_neighbors=3)
+classifier.fit(master_df, classification_target)
+from joblib import dump
+dump(classifier, "classifier.joblib")
+dump(min_max_scaler, "scaler.joblib")
+#print(classifier.predict_proba(master_df[0].reshape(1, -1)))
+#print(classifier.classes_)
+#print(master_df[0])
