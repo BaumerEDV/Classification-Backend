@@ -83,3 +83,18 @@ Multinomial Naive Bayes: [0.8, 0.825, 0.7948717948717948, 0.6666666666666666]
 
 Process finished with exit code 0
 """""
+
+"""""
+classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500, random_state=42)
+#classifier = KNeighborsClassifier(3)
+classifier.fit(X_train, y_train)
+probabilities = classifier.predict_proba(X_test)
+for i in range(len(probabilities)):
+    probability_set = probabilities[i]
+    #print(probability_set)
+    print("Correct Answer: " + str(y_test.to_numpy()[i]))
+    for k in range(len(classifier.classes_)):
+        print(classifier.classes_[k] + ": " + str(probability_set[k]))
+"""""
+
+
