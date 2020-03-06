@@ -244,3 +244,54 @@ y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
 y_predictions = classifier.predict_proba(X_test)
 print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))
+
+classifiers = [
+    {
+        "name": "K(3) Nearest Neighbor",
+        "classifier": KNeighborsClassifier(n_neighbors=3),
+        "param_dist": {
+            "n_neighbors": [3, 4, 5, 6],
+            "weights": ["uniform", "distance"],
+            "algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
+            "leaf_size": [10, 20, 30, 75, 150, 300],
+            "p": [1, 2],
+            "n_jobs": [-1]
+        }
+    },
+    {
+        "name": "Feed Forward Neural Network",
+        "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
+                                    random_state=42),
+        "param_dist": {
+            "hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
+            "activation": ["identity", "logistic", "tanh", "relu"],
+            "solver": ["lbfgs", "sgd", "adam"],
+            "alpha": [1e-5, 1e-4, 1e-3, 1e-2],
+            "learning_rate": ["constant", "invscaling", "adaptive"],
+            "learning_rate_init": [1e-4, 1e-3, 1e-2],
+            "max_iter": [100, 200, 500, 1000],
+            "shuffle": [False, True],
+            "random_state": [42],
+            "momentum": stats.uniform(0, 1),
+            "nesterovs_momentum": [False, True],
+            "beta_1": [1, 0.9, 0.8, 0.5, 0.1],
+            "beta_2": [0.9999, 0.999, 0.99, 0.9],
+        }
+    },
+    {
+        "name": "Multinomial Naive Bayes",
+        "classifier": MultinomialNB(),
+        "param_dist": {
+            "alpha": [0, 0.5, 0.9, 1],
+            "fit_prior": [False, True]
+        }
+    }
+]
+for classifier_data in classifiers:
+    classifier = classifier_data["classifier"]
+    print(classifier_data["name"])
+    classifier.fit(X_train, y_train)
+    y_predictions = classifier.predict(X_test)
+    print(accuracy_score(y_test, y_predictions))
+    y_predictions = classifier.predict_proba(X_test)
+    print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))
