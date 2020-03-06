@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score #https://elitedatascience.com/imbalanced-classes
+from sklearn.metrics import f1_score
 from sklearn import preprocessing
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import StratifiedKFold
@@ -70,6 +71,7 @@ del base_df
 #print(master_df['nodeId'].unique())
 #end upsampling
 
+"""
 #upsampling of test df
 most_common_class = test_df['nodeId'].value_counts().idxmax()
 n_most_common_class = test_df['nodeId'].value_counts().max()
@@ -88,7 +90,7 @@ del new_df
 del base_df
 #print(master_df['nodeId'].unique())
 #end upsampling
-
+"""
 
 
 
@@ -302,7 +304,8 @@ y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
 y_predictions = classifier.predict_proba(X_test)
 print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))#https://elitedatascience.com/imbalanced-classes
-
+print(f1_score(y_test, classifier.predict(X_test), average="weighted"))
+print("----")
 
 classifier = KNeighborsClassifier(weights='distance', p=1, n_neighbors=4, n_jobs=-1, leaf_size=300, algorithm='auto')
 classifier.fit(X_train, y_train)
@@ -310,6 +313,7 @@ y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
 y_predictions = classifier.predict_proba(X_test)
 print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))
+print(f1_score(y_test, classifier.predict(X_test), average="weighted"))
 
 classifiers = [
     {
@@ -361,3 +365,4 @@ for classifier_data in classifiers:
     print(accuracy_score(y_test, y_predictions))
     y_predictions = classifier.predict_proba(X_test)
     print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))
+    print(f1_score(y_test, classifier.predict(X_test), average="weighted"))
