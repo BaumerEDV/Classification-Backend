@@ -28,28 +28,6 @@ X_train, X_test, y_train, y_test = train_test_split(master_df, classification_ta
 
 save_feature_arry_column_order(X_train)
 
-classifiers = [
-    {
-        "name": "K(3) Nearest Neighbor",
-        "classifier": KNeighborsClassifier(n_neighbors=3)
-    },
-    {
-        "name": "Feed Forward Neural Network",
-        "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500, random_state=42)
-    },
-    {
-        "name": "Multinomial Naive Bayes",
-        "classifier": MultinomialNB()
-    }
-]
-
-for classifier in classifiers:
-    classifier["classifier"].fit(X_train, y_train)
-    y_pred = classifier["classifier"].predict(X_test)
-    print(classifier["name"] + ": " + str(accuracy_score(y_test, y_pred)))
-
-#print(len(y_train))
-
 print("doing 5-fold cross validation now")
 master_df = master_df.to_numpy()
 classification_target = classification_target.to_numpy()
@@ -76,7 +54,7 @@ for classifier_package in classifiers:
         y_pred = classifier.predict(master_df[test_index])
         accuracies.append(accuracy_score(y_pred, classification_target[test_index]))
         #print(len(train_index))
-    print(classifier_package["name"] + ": " + str(accuracies))
+    print(classifier_package["name"] + ": " + str(mean(accuracies)))
 
 
 #output:
