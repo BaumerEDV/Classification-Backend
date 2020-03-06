@@ -3,6 +3,7 @@ from sklearn.neural_network import MLPClassifier
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score #https://elitedatascience.com/imbalanced-classes
 from sklearn import preprocessing
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import StratifiedKFold
@@ -214,9 +215,13 @@ classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500,
 classifier.fit(X_train, y_train)
 y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
+y_predictions = classifier.predict_proba(X_test)
+print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))#https://elitedatascience.com/imbalanced-classes
 
 
 classifier = MLPClassifier(activation="logistic", alpha=0.01, beta_1=0.8, beta_2=0.9, hidden_layer_sizes = 75, learning_rate= 'adaptive', learning_rate_init= 0.01, max_iter= 200, momentum= 0.731910308820929, nesterovs_momentum= True, random_state= 42, shuffle= True, solver= 'adam')
 classifier.fit(X_train, y_train)
 y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
+y_predictions = classifier.predict_proba(X_test)
+print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))
