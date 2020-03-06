@@ -1,13 +1,11 @@
 #based on: https://gist.github.com/fahadysf/d80b99685ea3cfe3de4631f60e0136cc
 #and https://gist.github.com/gnilchee/246474141cbe588eb9fb
 
-from multiprocessing import Pool, Manager
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 import json
 import cgi
-import random, time
+import random
 import pandas as pd
 import numpy as np
 
@@ -27,7 +25,7 @@ def get_classification_result_as_dict(measurement_dict):
     #time.sleep(random.random()*2.0)
     result = {"prediction": random.random()}
     measurement_df = pd.DataFrame([measurement_dict])
-    feature_vector = pd.concat([features_head, measurement_df[features_head.columns.intersection(measurement_df.columns)]])
+    feature_vector = pd.concat([features_head, measurement_df[features_head.columns.intersection(measurement_df.columns)]], sort=False)
     feature_vector["pressure"].fillna(974, inplace=True)
     feature_vector.fillna(-100, inplace=True)
     feature_vector = scaler.transform(feature_vector)
