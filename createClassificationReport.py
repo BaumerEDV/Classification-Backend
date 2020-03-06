@@ -162,6 +162,7 @@ classifiers = [
         }
     }
 ]
+# TODO: oversampling leads to training data being in test data in the kfold cross validation
 for classifier_package in classifiers:
     continue
     accuracies = []
