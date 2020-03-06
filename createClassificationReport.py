@@ -19,7 +19,7 @@ from sklearn.utils import resample
 EXPORT_FILE_NAME = "combined_data.csv"
 EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
 K_FOLD_NUMBER = 4
-RANDOMIZED_SEARCH_ITERATIONS = 100
+RANDOMIZED_SEARCH_ITERATIONS = 30
 
 
 #from: https://scikit-learn.org/stable/auto_examples/model_selection/plot_randomized_search.html#sphx-glr-auto-examples-model-selection-plot-randomized-search-py
@@ -43,6 +43,14 @@ def save_feature_arry_column_order(feature_array):
 
 master_df = pd.read_csv(EXPORT_FILE_NAME)
 master_df.fillna(-100, inplace=True)
+master_df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
+master_df.drop_duplicates(inplace=True)
+#print(master_df.groupby(master_df.columns.tolist(),as_index=False).size())
+min_max_scaler = preprocessing.MinMaxScaler()
+master_df[master_df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(master_df[master_df.columns.difference(['nodeId'])])
+train_df, test_df = train_test_split(master_df, test_size=0.33, random_state=36, stratify=master_df['nodeId'])
+print(pd.merge(train_df, test_df, on=train_df.columns.to_list(), how='outer', indicator='Exist')['Exist'].value_counts())
+master_df = train_df
 #upsampling
 most_common_class = master_df['nodeId'].value_counts().idxmax()
 n_most_common_class = master_df['nodeId'].value_counts().max()
@@ -53,33 +61,41 @@ for class_name in master_df['nodeId'].unique():
         new_df = pd.concat([new_df, base_df], axis=0)
         continue
     n_class = (master_df.nodeId == class_name).sum()
-    class_oversampled_df = master_df.loc[master_df['nodeId'] == class_name].sample(n_most_common_class, replace=True)
+    class_oversampled_df = master_df.loc[master_df['nodeId'] == class_name].sample(n_most_common_class, replace=True, random_state=42)
     new_df = pd.concat([new_df, class_oversampled_df], axis=0)
     #https://www.kaggle.com/rafjaa/resampling-strategies-for-imbalanced-datasets
 master_df = new_df
 del new_df
 del base_df
-print(master_df['nodeId'].unique())
+#print(master_df['nodeId'].unique())
 #end upsampling
-classification_target = master_df['nodeId']
-master_df.drop(['Unnamed: 0', 'timestamp', 'nodeId'], axis=1, inplace=True)
-min_max_scaler = preprocessing.MinMaxScaler()
-master_df = pd.DataFrame(min_max_scaler.fit_transform(master_df),
-                         columns=master_df.columns,
-                         index=master_df.index)  # https://stackoverflow.com/questions/26414913/normalize-columns-of-pandas-data-frame
+#classification_target = master_df['nodeId']
+#master_df.drop(['Unnamed: 0', 'timestamp', 'nodeId'], axis=1, inplace=True)
+#min_max_scaler = preprocessing.MinMaxScaler()
+#master_df = pd.DataFrame(min_max_scaler.fit_transform(master_df),
+#                         columns=master_df.columns,
+#                         index=master_df.index)  # https://stackoverflow.com/questions/26414913/normalize-columns-of-pandas-data-frame
 
-X_train, X_test, y_train, y_test = train_test_split(master_df,
-                                                    classification_target,
-                                                    test_size=0.33,
-                                                    stratify=classification_target,
-                                                    random_state=36)  # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+#X_train, X_test, y_train, y_test = train_test_split(master_df,
+#                                                    classification_target,
+#                                                    test_size=0.33,
+#                                                    stratify=classification_target,
+#                                                    random_state=36)  # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+X_train = master_df.drop(['nodeId'], axis=1)
+y_train = master_df['nodeId']
+X_test = test_df.drop(['nodeId'], axis=1)
+y_test = test_df['nodeId']
+
+#test if any training data is also in the test data
+#print(len(X_train))
+#print(len(X_test))
+#print(X_train.columns.to_list())
+print(pd.merge(X_train, X_test, on=X_train.columns.to_list(), how='outer', indicator='Exist')['Exist'].value_counts())
+#print(set(X_train.columns)==set(X_test.columns))
 
 save_feature_arry_column_order(X_train)
 
 print("doing " + str(K_FOLD_NUMBER) + "-fold cross validation now")
-master_df = master_df.to_numpy()
-classification_target = classification_target.to_numpy()
-kf = StratifiedKFold(n_splits=K_FOLD_NUMBER)
 classifiers = [
     {
         "name": "K(3) Nearest Neighbor",
@@ -103,7 +119,7 @@ classifiers = [
             "alpha": [1e-5, 1e-4, 1e-3, 1e-2],
             "learning_rate": ["constant", "invscaling", "adaptive"],
             "learning_rate_init": [1e-4, 1e-3, 1e-2],
-            "max_iter": [100, 200, 500, 1000],
+            "max_iter": [500, 700, 1000],
             "shuffle": [False, True],
             "random_state": [42],
             "momentum": stats.uniform(0, 1),
@@ -135,60 +151,75 @@ for classifier_package in classifiers:
 #output:
 """
 Model with rank: 1
-Mean validation score: 0.905 (std: 0.033)
-Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 150, 'algorithm': 'auto'}
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 20, 'algorithm': 'brute'}
 
 Model with rank: 1
-Mean validation score: 0.905 (std: 0.033)
-Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 30, 'algorithm': 'auto'}
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 20, 'algorithm': 'auto'}
 
 Model with rank: 1
-Mean validation score: 0.905 (std: 0.033)
-Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'auto'}
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'brute'}
+
+-----
+Model with rank: 1
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'relu', 'alpha': 0.01, 'beta_1': 0.1, 'beta_2': 0.99, 'hidden_layer_sizes': 450, 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.5859184324863851, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.905 (std: 0.033)
-Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'kd_tree'}
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'identity', 'alpha': 0.01, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.9587669529935868, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
 
 Model with rank: 1
-Mean validation score: 0.905 (std: 0.033)
-Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'ball_tree'}
-
-----
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.5, 'beta_2': 0.999, 'hidden_layer_sizes': 140, 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.8394971016990658, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
 
 Model with rank: 1
-Mean validation score: 0.953 (std: 0.049)
-Parameters: {'activation': 'logistic', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.99, 'hidden_layer_sizes': 125, 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'max_iter': 200, 'momentum': 0.3708563089326743, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
-
-Model with rank: 2
-Mean validation score: 0.953 (std: 0.031)
-Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.8, 'beta_2': 0.9, 'hidden_layer_sizes': 75, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 200, 'momentum': 0.731910308820929, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
-
-Model with rank: 2
-Mean validation score: 0.953 (std: 0.031)
-Parameters: {'activation': 'tanh', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.272082676321058, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
-
-Model with rank: 2
-Mean validation score: 0.953 (std: 0.031)
-Parameters: {'activation': 'logistic', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.9, 'hidden_layer_sizes': 140, 'learning_rate': 'invscaling', 'learning_rate_init': 0.001, 'max_iter': 200, 'momentum': 0.21675198639412896, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
-
-----
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'logistic', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layer_sizes': 75, 'learning_rate': 'constant', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.7587432831755883, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.828 (std: 0.058)
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'identity', 'alpha': 1e-05, 'beta_1': 0.9, 'beta_2': 0.9999, 'hidden_layer_sizes': 125, 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'max_iter': 700, 'momentum': 0.6444073553139397, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
+
+Model with rank: 1
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'tanh', 'alpha': 0.01, 'beta_1': 0.5, 'beta_2': 0.99, 'hidden_layer_sizes': 100, 'learning_rate': 'invscaling', 'learning_rate_init': 0.0001, 'max_iter': 700, 'momentum': 0.8353188071744626, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+
+Model with rank: 1
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'identity', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.9999, 'hidden_layer_sizes': 450, 'learning_rate': 'invscaling', 'learning_rate_init': 0.0001, 'max_iter': 500, 'momentum': 0.9854783017836407, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+
+Model with rank: 1
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'tanh', 'alpha': 1e-05, 'beta_1': 0.5, 'beta_2': 0.9, 'hidden_layer_sizes': 300, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'max_iter': 500, 'momentum': 0.8816515567563894, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+
+Model with rank: 1
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'tanh', 'alpha': 0.01, 'beta_1': 0.8, 'beta_2': 0.999, 'hidden_layer_sizes': 75, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 700, 'momentum': 0.6600342241811324, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+
+Model with rank: 1
+Mean validation score: 0.997 (std: 0.006)
+Parameters: {'activation': 'relu', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.9999, 'hidden_layer_sizes': 125, 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'max_iter': 700, 'momentum': 0.2784661922457857, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
+------
+Model with rank: 1
+Mean validation score: 0.979 (std: 0.016)
 Parameters: {'fit_prior': False, 'alpha': 0}
+  'setting alpha = %.1e' % _ALPHA_MIN)
 
 Model with rank: 1
-Mean validation score: 0.828 (std: 0.058)
+Mean validation score: 0.979 (std: 0.016)
 Parameters: {'fit_prior': True, 'alpha': 0}
 
 Model with rank: 3
-Mean validation score: 0.762 (std: 0.033)
+Mean validation score: 0.965 (std: 0.029)
 Parameters: {'fit_prior': False, 'alpha': 0.5}
 
 Model with rank: 3
-Mean validation score: 0.762 (std: 0.033)
+Mean validation score: 0.965 (std: 0.029)
 Parameters: {'fit_prior': True, 'alpha': 0.5}
+
 
 
 """
@@ -220,6 +251,10 @@ for i in range(len(probabilities)):
         print(classifier.classes_[k] + ": " + str(probability_set[k]))
 """""
 
+master_df = pd.concat([master_df, test_df], axis=0)
+classification_target = master_df['nodeId']
+master_df = master_df.drop(['nodeId'], axis=1)
+
 # at this point save the best classifier using all the training data; as well as the scaler
 classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500,
                            random_state=42)
@@ -229,8 +264,8 @@ classifier.fit(master_df, classification_target)
 dump(classifier, "classifier.joblib")
 dump(min_max_scaler, "scaler.joblib")
 
-classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500,
-                           random_state=42)
+#95.9% acc, 99.4% ROC
+classifier = MLPClassifier(activation='logistic', alpha=0.01, beta_1=0.5, beta_2=0.999, hidden_layer_sizes=140, learning_rate='adaptive', learning_rate_init=0.001, max_iter=1000, momentum=0.8394971016990658, nesterovs_momentum=True, random_state=42, shuffle=False, solver='adam')
 classifier.fit(X_train, y_train)
 y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
