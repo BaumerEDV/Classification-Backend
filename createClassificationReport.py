@@ -102,6 +102,7 @@ classifiers = [
     }
 ]
 for classifier_package in classifiers:
+    continue
     accuracies = []
     classifier = classifier_package["classifier"]
     param_dist = classifier_package["param_dist"]
@@ -207,3 +208,15 @@ classifier.fit(master_df, classification_target)
 
 dump(classifier, "classifier.joblib")
 dump(min_max_scaler, "scaler.joblib")
+
+classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500,
+                           random_state=42)
+classifier.fit(X_train, y_train)
+y_predictions = classifier.predict(X_test)
+print(accuracy_score(y_test, y_predictions))
+
+
+classifier = MLPClassifier(activation="logistic", alpha=0.01, beta_1=0.8, beta_2=0.9, hidden_layer_sizes = 75, learning_rate= 'adaptive', learning_rate_init= 0.01, max_iter= 200, momentum= 0.731910308820929, nesterovs_momentum= True, random_state= 42, shuffle= True, solver= 'adam')
+classifier.fit(X_train, y_train)
+y_predictions = classifier.predict(X_test)
+print(accuracy_score(y_test, y_predictions))
