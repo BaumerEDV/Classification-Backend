@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score #https://elitedatascience.com/imbalanced-classes
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, make_scorer
 from sklearn import preprocessing
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import StratifiedKFold
@@ -169,90 +169,70 @@ for classifier_package in classifiers:
     param_dist = classifier_package["param_dist"]
     random_search = RandomizedSearchCV(classifier, param_distributions=param_dist,
                                        n_iter=RANDOMIZED_SEARCH_ITERATIONS,
-                                       cv=K_FOLD_NUMBER)
+                                       cv=K_FOLD_NUMBER
+                                       #, scoring=make_scorer(f1_score, average="weighted")
+                                       )
     random_search.fit(X_train, y_train)
     report(random_search.cv_results_)
 
 #output:
 """
+Model with rank: 1
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 150, 'algorithm': 'auto'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 300, 'algorithm': 'auto'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 30, 'algorithm': 'ball_tree'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 300, 'algorithm': 'kd_tree'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 20, 'algorithm': 'kd_tree'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
+Mean validation score: 0.996 (std: 0.006)
 Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'kd_tree'}
+------
+Model with rank: 1
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'relu', 'alpha': 0.001, 'beta_1': 0.5, 'beta_2': 0.9999, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'max_iter': 500, 'momentum': 0.6980424280512796, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 20, 'algorithm': 'ball_tree'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'relu', 'alpha': 0.0001, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layer_sizes': 50, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.1494587234719731, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'ball_tree'}
--------------
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.001, 'beta_1': 0.8, 'beta_2': 0.9999, 'hidden_layer_sizes': 125, 'learning_rate': 'constant', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.1662297780377231, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'identity', 'alpha': 0.01, 'beta_1': 0.5, 'beta_2': 0.999, 'hidden_layer_sizes': 50, 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.7455215801287599, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'identity', 'alpha': 0.001, 'beta_1': 0.5, 'beta_2': 0.99, 'hidden_layer_sizes': 50, 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.6447423683224427, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'identity', 'alpha': 0.01, 'beta_1': 0.9, 'beta_2': 0.9999, 'hidden_layer_sizes': 75, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.41418639699290927, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'identity', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 140, 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'max_iter': 500, 'momentum': 0.9962171438150266, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'tanh', 'alpha': 0.001, 'beta_1': 0.5, 'beta_2': 0.9999, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.16765559948854347, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'tanh', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 300, 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.40812651331308136, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.1, 'beta_2': 0.9, 'hidden_layer_sizes': 50, 'learning_rate': 'constant', 'learning_rate_init': 0.0001, 'max_iter': 700, 'momentum': 0.4913184988689062, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.9, 'hidden_layer_sizes': 140, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 1000, 'momentum': 0.011596854645315013, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'relu', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layer_sizes': 125, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 1000, 'momentum': 0.38656108682934, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.01, 'beta_1': 0.1, 'beta_2': 0.9, 'hidden_layer_sizes': 75, 'learning_rate': 'invscaling', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.03473091348986179, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'tanh', 'alpha': 0.0001, 'beta_1': 0.5, 'beta_2': 0.9999, 'hidden_layer_sizes': 450, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 1000, 'momentum': 0.5776675430336341, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'tanh', 'alpha': 0.0001, 'beta_1': 0.5, 'beta_2': 0.999, 'hidden_layer_sizes': 50, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 1000, 'momentum': 0.9808388010468169, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'sgd'}
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 50, 'learning_rate': 'constant', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.15692525314837436, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
 
 Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 1e-05, 'beta_1': 0.9, 'beta_2': 0.9999, 'hidden_layer_sizes': 140, 'learning_rate': 'invscaling', 'learning_rate_init': 0.001, 'max_iter': 700, 'momentum': 0.0662075395689311, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
-
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'identity', 'alpha': 1e-05, 'beta_1': 0.5, 'beta_2': 0.999, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'max_iter': 500, 'momentum': 0.43679626103162683, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'tanh', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.9, 'hidden_layer_sizes': 300, 'learning_rate': 'invscaling', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.9496774334125512, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.001, 'beta_1': 0.8, 'beta_2': 0.9, 'hidden_layer_sizes': 450, 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'max_iter': 700, 'momentum': 0.3769630532608683, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
-
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'logistic', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.99, 'hidden_layer_sizes': 125, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.4766980978325436, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
-
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'tanh', 'alpha': 0.001, 'beta_1': 0.1, 'beta_2': 0.99, 'hidden_layer_sizes': 75, 'learning_rate': 'invscaling', 'learning_rate_init': 0.0001, 'max_iter': 700, 'momentum': 0.8056969007161305, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.997 (std: 0.006)
-Parameters: {'activation': 'logistic', 'alpha': 1e-05, 'beta_1': 0.1, 'beta_2': 0.99, 'hidden_layer_sizes': 100, 'learning_rate': 'invscaling', 'learning_rate_init': 0.001, 'max_iter': 1000, 'momentum': 0.8681797654693738, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
--------------------
-Model with rank: 1
+Mean validation score: 0.996 (std: 0.006)
+Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.1, 'beta_2': 0.9, 'hidden_layer_sizes': 140, 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'max_iter': 700, 'momentum': 0.14873268357063663, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+-----
 Mean validation score: 0.979 (std: 0.016)
 Parameters: {'fit_prior': False, 'alpha': 0}
 
@@ -261,12 +241,13 @@ Mean validation score: 0.979 (std: 0.016)
 Parameters: {'fit_prior': True, 'alpha': 0}
 
 Model with rank: 3
-Mean validation score: 0.965 (std: 0.029)
+Mean validation score: 0.963 (std: 0.032)
 Parameters: {'fit_prior': False, 'alpha': 0.5}
 
 Model with rank: 3
-Mean validation score: 0.965 (std: 0.029)
+Mean validation score: 0.963 (std: 0.032)
 Parameters: {'fit_prior': True, 'alpha': 0.5}
+
 
 
 """
@@ -297,6 +278,17 @@ classifier.fit(master_df, classification_target)
 
 dump(classifier, "classifier.joblib")
 dump(min_max_scaler, "scaler.joblib")
+
+
+
+classifier = MLPClassifier(activation='tanh', alpha=0.001, beta_1=0.5, beta_2=0.9999, hidden_layer_sizes=100, learning_rate='adaptive', learning_rate_init=0.01, max_iter=500, momentum=0.16765559948854347, nesterovs_momentum=True, random_state=42, shuffle=False, solver='adam')
+classifier.fit(X_train, y_train)
+y_predictions = classifier.predict(X_test)
+print(accuracy_score(y_test, y_predictions))
+y_predictions = classifier.predict_proba(X_test)
+print(roc_auc_score(y_test, y_predictions, multi_class="ovo", average="weighted"))#https://elitedatascience.com/imbalanced-classes
+print(f1_score(y_test, classifier.predict(X_test), average="weighted"))
+print("----")
 
 classifier = MLPClassifier(activation='relu', alpha=0.001, beta_1=0.8, beta_2=0.9999, hidden_layer_sizes=125, learning_rate='constant', learning_rate_init=0.0001, max_iter=1000, momentum=0.1662297780377231, nesterovs_momentum=True, random_state=42, shuffle=False, solver='lbfgs')
 classifier.fit(X_train, y_train)
