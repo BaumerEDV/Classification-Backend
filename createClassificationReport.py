@@ -13,6 +13,7 @@ import numpy as np
 import scipy.stats as stats
 from sklearn.utils.fixes import loguniform
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.utils import resample
 
 
 EXPORT_FILE_NAME = "combined_data.csv"
@@ -42,6 +43,24 @@ def save_feature_arry_column_order(feature_array):
 
 master_df = pd.read_csv(EXPORT_FILE_NAME)
 master_df.fillna(-100, inplace=True)
+#upsampling
+most_common_class = master_df['nodeId'].value_counts().idxmax()
+n_most_common_class = master_df['nodeId'].value_counts().max()
+base_df = master_df.loc[master_df['nodeId'] == most_common_class]
+new_df = pd.DataFrame()
+for class_name in master_df['nodeId'].unique():
+    if class_name == most_common_class:
+        new_df = pd.concat([new_df, base_df], axis=0)
+        continue
+    n_class = (master_df.nodeId == class_name).sum()
+    class_oversampled_df = master_df.loc[master_df['nodeId'] == class_name].sample(n_most_common_class, replace=True)
+    new_df = pd.concat([new_df, class_oversampled_df], axis=0)
+    #https://www.kaggle.com/rafjaa/resampling-strategies-for-imbalanced-datasets
+master_df = new_df
+del new_df
+del base_df
+print(master_df['nodeId'].unique())
+#end upsampling
 classification_target = master_df['nodeId']
 master_df.drop(['Unnamed: 0', 'timestamp', 'nodeId'], axis=1, inplace=True)
 min_max_scaler = preprocessing.MinMaxScaler()
