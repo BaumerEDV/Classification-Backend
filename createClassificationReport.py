@@ -66,6 +66,8 @@ for classifier_package in classifiers:
             accuracy_score(y_predictions, classification_target[test_index]))
         # print(len(train_index))
     print(classifier_package["name"] + ": " + str(median(accuracies)))
+    print("classifier params:")
+    print(classifier.get_params())
 
 # output:
 """""
