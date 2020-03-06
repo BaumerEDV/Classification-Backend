@@ -8,10 +8,30 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import StratifiedKFold
 from statistics import median, mean, stdev
 from joblib import dump
+import numpy as np
+import scipy.stats as stats
+from sklearn.utils.fixes import loguniform
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+
 
 EXPORT_FILE_NAME = "combined_data.csv"
 EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
 K_FOLD_NUMBER = 4
+RANDOMIZED_SEARCH_ITERATIONS = 100
+
+
+#from: https://scikit-learn.org/stable/auto_examples/model_selection/plot_randomized_search.html#sphx-glr-auto-examples-model-selection-plot-randomized-search-py
+# Utility function to report best scores
+def report(results, n_top=3):
+    for i in range(1, n_top + 1):
+        candidates = np.flatnonzero(results['rank_test_score'] == i)
+        for candidate in candidates:
+            print("Model with rank: {0}".format(i))
+            print("Mean validation score: {0:.3f} (std: {1:.3f})"
+                  .format(results['mean_test_score'][candidate],
+                          results['std_test_score'][candidate]))
+            print("Parameters: {0}".format(results['params'][candidate]))
+            print("")
 
 
 def save_feature_arry_column_order(feature_array):
@@ -43,31 +63,114 @@ kf = StratifiedKFold(n_splits=K_FOLD_NUMBER)
 classifiers = [
     {
         "name": "K(3) Nearest Neighbor",
-        "classifier": KNeighborsClassifier(n_neighbors=3)
+        "classifier": KNeighborsClassifier(),
+        "param_dist": {
+            "n_neighbors": [3, 4, 5, 6],
+            "weights": ["uniform", "distance"],
+            "algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
+            "leaf_size": [10, 20, 30, 75, 150, 300],
+            "p": [1, 2],
+            "n_jobs": [-1]
+        }
     },
     {
         "name": "Feed Forward Neural Network",
-        "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
-                                    random_state=42)
+        "classifier": MLPClassifier(),
+        "param_dist": {
+            "hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
+            "activation": ["identity", "logistic", "tanh", "relu"],
+            "solver": ["lbfgs", "sgd", "adam"],
+            "alpha": [1e-5, 1e-4, 1e-3, 1e-2],
+            "learning_rate": ["constant", "invscaling", "adaptive"],
+            "learning_rate_init": [1e-4, 1e-3, 1e-2],
+            "max_iter": [100, 200, 500, 1000],
+            "shuffle": [False, True],
+            "random_state": [42],
+            "momentum": stats.uniform(0, 1),
+            "nesterovs_momentum": [False, True],
+            "beta_1": [1, 0.9, 0.8, 0.5, 0.1],
+            "beta_2": [0.9999, 0.999, 0.99, 0.9],
+        }
     },
     {
         "name": "Multinomial Naive Bayes",
-        "classifier": MultinomialNB()
+        "classifier": MultinomialNB(),
+        "param_dist": {
+            "alpha": [0, 0.5, 0.9, 1],
+            "fit_prior": [False, True]
+        }
     }
 ]
 for classifier_package in classifiers:
     accuracies = []
     classifier = classifier_package["classifier"]
-    for train_index, test_index in kf.split(master_df, classification_target):
-        classifier.fit(master_df[train_index],
-                       classification_target[train_index])
-        y_predictions = classifier.predict(master_df[test_index])
-        accuracies.append(
-            accuracy_score(y_predictions, classification_target[test_index]))
-        # print(len(train_index))
-    print(classifier_package["name"] + ": " + str(median(accuracies)))
-    print("classifier params:")
-    print(classifier.get_params())
+    param_dist = classifier_package["param_dist"]
+    random_search = RandomizedSearchCV(classifier, param_distributions=param_dist,
+                                       n_iter=RANDOMIZED_SEARCH_ITERATIONS,
+                                       cv=K_FOLD_NUMBER)
+    random_search.fit(X_train, y_train)
+    report(random_search.cv_results_)
+
+#output:
+"""
+Model with rank: 1
+Mean validation score: 0.905 (std: 0.033)
+Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 150, 'algorithm': 'auto'}
+
+Model with rank: 1
+Mean validation score: 0.905 (std: 0.033)
+Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 30, 'algorithm': 'auto'}
+
+Model with rank: 1
+Mean validation score: 0.905 (std: 0.033)
+Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'auto'}
+
+Model with rank: 1
+Mean validation score: 0.905 (std: 0.033)
+Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'kd_tree'}
+
+Model with rank: 1
+Mean validation score: 0.905 (std: 0.033)
+Parameters: {'weights': 'distance', 'p': 2, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'ball_tree'}
+
+----
+
+Model with rank: 1
+Mean validation score: 0.953 (std: 0.049)
+Parameters: {'activation': 'logistic', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.99, 'hidden_layer_sizes': 125, 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'max_iter': 200, 'momentum': 0.3708563089326743, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
+
+Model with rank: 2
+Mean validation score: 0.953 (std: 0.031)
+Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.8, 'beta_2': 0.9, 'hidden_layer_sizes': 75, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 200, 'momentum': 0.731910308820929, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
+
+Model with rank: 2
+Mean validation score: 0.953 (std: 0.031)
+Parameters: {'activation': 'tanh', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.272082676321058, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
+
+Model with rank: 2
+Mean validation score: 0.953 (std: 0.031)
+Parameters: {'activation': 'logistic', 'alpha': 0.0001, 'beta_1': 0.8, 'beta_2': 0.9, 'hidden_layer_sizes': 140, 'learning_rate': 'invscaling', 'learning_rate_init': 0.001, 'max_iter': 200, 'momentum': 0.21675198639412896, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
+
+----
+
+Model with rank: 1
+Mean validation score: 0.828 (std: 0.058)
+Parameters: {'fit_prior': False, 'alpha': 0}
+
+Model with rank: 1
+Mean validation score: 0.828 (std: 0.058)
+Parameters: {'fit_prior': True, 'alpha': 0}
+
+Model with rank: 3
+Mean validation score: 0.762 (std: 0.033)
+Parameters: {'fit_prior': False, 'alpha': 0.5}
+
+Model with rank: 3
+Mean validation score: 0.762 (std: 0.033)
+Parameters: {'fit_prior': True, 'alpha': 0.5}
+
+
+"""
 
 # output:
 """""
