@@ -17,25 +17,19 @@ STATUS_CODE_BAD_REQUEST = 400
 SERVER_PORT = 8111
 
 
-# Resources to read
-#
-# http://stackoverflow.com/a/1239252/603280
-# http://stackoverflow.com/questions/13689927/how-to-get-the-amount-of-work-left-to-be-done-by-a-python-multiprocessing-pool
-#
-
-
 def get_classification_result_as_dict(measurement_dict):
     result = {"prediction": random.random()}
     measurement_df = pd.DataFrame([measurement_dict])
+    # TODO: if you were to transform the timestamp into more sophisticated forms of data, you'd do it here
     feature_vector = pd.concat(
-        [features_head, measurement_df[features_head.columns.intersection(measurement_df.columns)]], sort=False)
+        [FEATURES_HEAD, measurement_df[FEATURES_HEAD.columns.intersection(measurement_df.columns)]], sort=False)
     feature_vector["pressure"].fillna(974, inplace=True)
     feature_vector.fillna(DBM_NA_FILL_VALUE, inplace=True)
-    feature_vector = scaler.transform(feature_vector)
-    prediction = classifier.predict_proba(feature_vector)
-    result = dict(zip(classifier.classes_, prediction[0].tolist()))
+    feature_vector = SCALER.transform(feature_vector)
+    prediction = CLASSIFIER.predict_proba(feature_vector)
+    result = dict(zip(CLASSIFIER.classes_, prediction[0].tolist()))
     index_of_highest_likelihood_prediction = np.where(prediction[0] == np.amax(prediction[0]))[0][0]
-    result["prediction"] = classifier.classes_[index_of_highest_likelihood_prediction]
+    result["prediction"] = CLASSIFIER.classes_[index_of_highest_likelihood_prediction]
     return result
 
 
@@ -96,8 +90,8 @@ if __name__ == "__main__":
     from joblib import load
 
     # Initializing our global resources.
-    global classifier, scaler, features_head
-    features_head = pd.read_csv(EXPORT_FEATURE_VECTOR_FILE_NAME)
-    classifier = load(CLASSIFIER_JOBLIB_FILE_NAME)
-    scaler = load(SCALER_JOBLIB_FILE_NAME)
+    global CLASSIFIER, SCALER, FEATURES_HEAD
+    FEATURES_HEAD = pd.read_csv(EXPORT_FEATURE_VECTOR_FILE_NAME)
+    CLASSIFIER = load(CLASSIFIER_JOBLIB_FILE_NAME)
+    SCALER = load(SCALER_JOBLIB_FILE_NAME)
     run()

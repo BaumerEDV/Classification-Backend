@@ -119,11 +119,14 @@ CLASSIFIERS_FOR_EVALUATION = [
                                              criterion='gini', class_weight=None)
     }
 ]
+MODEL_TO_SERIALIZE = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
+                                            criterion='gini',
+                                            class_weight=None)
 
 
 # from: https://scikit-learn.org/stable/auto_examples/model_selection/plot_randomized_search.html#sphx-glr-auto-examples-model-selection-plot-randomized-search-py
 # Utility function to report best scores
-def report_search_result(results, n_top=3):
+def report_search_top_results(results, n_top=3):
     for i in range(1, n_top + 1):
         candidates = np.flatnonzero(results['rank_test_score'] == i)
         for candidate in candidates:
@@ -140,7 +143,7 @@ def save_feature_array_column_order(feature_array):
         EXPORT_FEATURE_VECTOR_FILE_NAME, index=False)
 
 
-def assert_train_and_test_feature_vectors_are_distinct(train_df, test_df):
+def assert_train_and_test_feature_vectors_are_fully_distinct(train_df, test_df):
     assert (pd.merge(train_df, test_df, on=train_df.columns.to_list(), how='outer',
                      indicator='Exist')['Exist'].value_counts().both == 0)
 
@@ -176,8 +179,7 @@ def save_model_and_scaler(model, scaler):
 
 
 def test_and_report_classifier_performance(classifier, name, X_train, y_train, X_validation, y_validation):
-    classifier = classifier_data["classifier"]
-    print(classifier_data["name"])
+    print(name)
     classifier.fit(X_train, y_train)
     y_predictions = classifier.predict(X_validation)
     y_predictions_proba = classifier.predict_proba(X_validation)
@@ -193,54 +195,71 @@ def test_and_report_classifier_performance(classifier, name, X_train, y_train, X
         print(key, value)
 
 
-master_df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
-master_df.fillna(DBM_NA_FILL_VALUE, inplace=True)
-master_df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
-master_df.drop_duplicates(inplace=True)
-min_max_scaler = preprocessing.MinMaxScaler()
-master_df[
-    master_df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(
-    master_df[master_df.columns.difference(['nodeId'])])
-train_df, validation_df = train_test_split(master_df, test_size=0.33, random_state=36,
-                                           stratify=master_df['nodeId'])
-assert_train_and_test_feature_vectors_are_distinct(train_df, validation_df)
-master_df = train_df
+def conduct_random_search(X_train, y_train):
+    for classifier_data in CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS:
+        model = classifier_data["classifier"]
+        param_dist = classifier_data["param_dist"]
+        random_search = RandomizedSearchCV(model, param_distributions=param_dist,
+                                           n_iter=RANDOMIZED_SEARCH_ITERATIONS,
+                                           cv=K_FOLD_NUMBER
+                                           # , scoring=make_scorer(f1_score, average="weighted")
+                                           )
+        random_search.fit(X_train, y_train)
+        report_search_top_results(random_search.cv_results_)
 
-if OVERSAMPLE_VALIDATION_DATASET:
-    validation_df = oversample_df(validation_df)
 
-X_train = master_df.drop(['nodeId'], axis=1)
-y_train = master_df['nodeId']
-X_validation = validation_df.drop(['nodeId'], axis=1)
-y_validation = validation_df['nodeId']
+def evaluate_classifiers(X_train, y_train, X_validation, y_validation):
+    for classifier_data in CLASSIFIERS_FOR_EVALUATION:
+        test_and_report_classifier_performance(classifier_data["classifier"], classifier_data["name"], X_train, y_train,
+                                               X_validation, y_validation)
 
-# test if any training data is also in the test data
-assert_train_and_test_feature_vectors_are_distinct(X_train, X_validation)
 
-save_feature_array_column_order(X_train)
+def load_and_clean_combined_data_df():
+    df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
+    df.fillna(DBM_NA_FILL_VALUE, inplace=True)
+    df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
+    df.drop_duplicates(inplace=True)
+    return df
 
-print("doing " + str(K_FOLD_NUMBER) + "-fold cross validation now")
 
-for classifier_data in CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS:
-    if SKIP_SEARCH:
-        continue
-    model = classifier_data["classifier"]
-    param_dist = classifier_data["param_dist"]
-    random_search = RandomizedSearchCV(model, param_distributions=param_dist,
-                                       n_iter=RANDOMIZED_SEARCH_ITERATIONS,
-                                       cv=K_FOLD_NUMBER
-                                       # , scoring=make_scorer(f1_score, average="weighted")
-                                       )
-    random_search.fit(X_train, y_train)
-    report_search_result(random_search.cv_results_)
+def get_scaled_data_and_scaler(df):
+    min_max_scaler = preprocessing.MinMaxScaler()
+    df[df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(
+        df[df.columns.difference(['nodeId'])])
+    return df, min_max_scaler
 
-for classifier_data in CLASSIFIERS_FOR_EVALUATION:
-    test_and_report_classifier_performance(classifier_data["classifier"], classifier_data["name"], X_train, y_train,
-                                           X_validation, y_validation)
+
+def split_into_train_and_validation_df(df):
+    return train_test_split(df, test_size=0.33, random_state=36,
+                            stratify=df['nodeId'])
+
+
+def get_X_and_y_for_train_and_validation(train_df, validation_df):
+    return train_df.drop(['nodeId'], axis=1), train_df['nodeId'], validation_df.drop(['nodeId'], axis=1), validation_df[
+        'nodeId']
+
+
+def oversample_df_if_enabled(df):
+    if OVERSAMPLE_VALIDATION_DATASET:
+        return oversample_df(df)
+    else:
+        return df
+
+
+def conduct_random_search_if_enabled(X_train, y_train):
+    if not SKIP_SEARCH:
+        conduct_random_search(X_train, y_train)
+
 
 if __name__ == "__main__":
-    model = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt', criterion='gini',
-                                   class_weight=None)
-    model = fit_model_on_test_and_validation_df(model, master_df, validation_df)
-    save_model_and_scaler(model, min_max_scaler)
+    master_df, min_max_scaler = get_scaled_data_and_scaler(load_and_clean_combined_data_df())
+    train_df, validation_df = split_into_train_and_validation_df(master_df)
+    validation_df = oversample_df_if_enabled(validation_df)
+    X_train, y_train, X_validation, y_validation = get_X_and_y_for_train_and_validation(train_df, validation_df)
+    assert_train_and_test_feature_vectors_are_fully_distinct(X_train, X_validation)
+    save_feature_array_column_order(X_train)
+    save_model_and_scaler(fit_model_on_test_and_validation_df(MODEL_TO_SERIALIZE, train_df, validation_df),
+                          min_max_scaler)
+    conduct_random_search_if_enabled(X_train, y_train)
+    evaluate_classifiers(X_train, y_train, X_validation, y_validation)
     pass
