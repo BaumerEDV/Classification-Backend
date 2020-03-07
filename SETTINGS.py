@@ -1,4 +1,5 @@
 import os
+
 MEASUREMENTS_FOLDER = os.fsencode("measurements")
 PRESSURE_FILE_PREFIX = "pressure_"
 WIFI_FILE_PREFIX = "wifi_"
