@@ -15,20 +15,20 @@ STATUS_CODE_NOT_IMPLEMENTED = 501
 STATUS_CODE_OK = 200
 STATUS_CODE_BAD_REQUEST = 400
 SERVER_PORT = 8111
+PRESSURE_NA_FILL_VALUE = 974
 
 
 def get_classification_result_as_dict(measurement_dict):
-    result = {"prediction": random.random()}
     measurement_df = pd.DataFrame([measurement_dict])
     # TODO: if you were to transform the timestamp into more sophisticated forms of data, you'd do it here
     feature_vector = pd.concat(
         [FEATURES_HEAD, measurement_df[FEATURES_HEAD.columns.intersection(measurement_df.columns)]], sort=False)
-    feature_vector["pressure"].fillna(974, inplace=True)
+    feature_vector["pressure"].fillna(PRESSURE_NA_FILL_VALUE, inplace=True)
     feature_vector.fillna(DBM_NA_FILL_VALUE, inplace=True)
     feature_vector = SCALER.transform(feature_vector)
-    prediction = CLASSIFIER.predict_proba(feature_vector)
-    result = dict(zip(CLASSIFIER.classes_, prediction[0].tolist()))
-    index_of_highest_likelihood_prediction = np.where(prediction[0] == np.amax(prediction[0]))[0][0]
+    predictions = CLASSIFIER.predict_proba(feature_vector)
+    result = dict(zip(CLASSIFIER.classes_, predictions[0].tolist()))
+    index_of_highest_likelihood_prediction = np.where(predictions[0] == np.amax(predictions[0]))[0][0]
     result["prediction"] = CLASSIFIER.classes_[index_of_highest_likelihood_prediction]
     return result
 
@@ -65,7 +65,12 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
         # read the wifi data and convert it into a python dictionary
         length = int(self.headers['content-length'])
-        measurement = json.loads(self.rfile.read(length))
+        try:
+            measurement = json.loads(self.rfile.read(length))
+        except json.decoder.JSONDecodeError:
+            self.send_response(STATUS_CODE_BAD_REQUEST)
+            self.end_headers()
+            return
 
         result = get_classification_result_as_dict(measurement)
 
@@ -90,7 +95,6 @@ if __name__ == "__main__":
     from joblib import load
 
     # Initializing our global resources.
-    global CLASSIFIER, SCALER, FEATURES_HEAD
     FEATURES_HEAD = pd.read_csv(EXPORT_FEATURE_VECTOR_FILE_NAME)
     CLASSIFIER = load(CLASSIFIER_JOBLIB_FILE_NAME)
     SCALER = load(SCALER_JOBLIB_FILE_NAME)
