@@ -18,11 +18,13 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.utils import resample
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
+from sklearn.ensemble import RandomForestClassifier
 
 EXPORT_FILE_NAME = "combined_data.csv"
 EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
 K_FOLD_NUMBER = 4
 RANDOMIZED_SEARCH_ITERATIONS = 30
+SKIP_SEARCH = True
 
 
 # from: https://scikit-learn.org/stable/auto_examples/model_selection/plot_randomized_search.html#sphx-glr-auto-examples-model-selection-plot-randomized-search-py
@@ -102,30 +104,14 @@ del base_df
 #end upsampling
 """
 
-# classification_target = master_df['nodeId']
-# master_df.drop(['Unnamed: 0', 'timestamp', 'nodeId'], axis=1, inplace=True)
-# min_max_scaler = preprocessing.MinMaxScaler()
-# master_df = pd.DataFrame(min_max_scaler.fit_transform(master_df),
-#                         columns=master_df.columns,
-#                         index=master_df.index)  # https://stackoverflow.com/questions/26414913/normalize-columns-of-pandas-data-frame
-
-# X_train, X_test, y_train, y_test = train_test_split(master_df,
-#                                                    classification_target,
-#                                                    test_size=0.33,
-#                                                    stratify=classification_target,
-#                                                    random_state=36)  # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
 X_train = master_df.drop(['nodeId'], axis=1)
 y_train = master_df['nodeId']
 X_test = test_df.drop(['nodeId'], axis=1)
 y_test = test_df['nodeId']
 
 # test if any training data is also in the test data
-# print(len(X_train))
-# print(len(X_test))
-# print(X_train.columns.to_list())
 print(pd.merge(X_train, X_test, on=X_train.columns.to_list(), how='outer',
                indicator='Exist')['Exist'].value_counts())
-# print(set(X_train.columns)==set(X_test.columns))
 
 save_feature_arry_column_order(X_train)
 
@@ -133,185 +119,396 @@ print("doing " + str(K_FOLD_NUMBER) + "-fold cross validation now")
 classifiers = [
     {
         "name": "K(3) Nearest Neighbor",
-        "classifier": KNeighborsClassifier(),
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", KNeighborsClassifier())
+        ]),
         "param_dist": {
-            "n_neighbors": [3, 4, 5, 6],
-            "weights": ["uniform", "distance"],
-            "algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
-            "leaf_size": [10, 20, 30, 75, 150, 300],
-            "p": [1, 2],
-            "n_jobs": [-1]
+            "classification__n_neighbors": [3, 4, 5, 6],
+            "classification__weights": ["uniform", "distance"],
+            "classification__algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
+            "classification__leaf_size": [10, 20, 30, 75, 150, 300],
+            "classification__p": [1, 2],
+            "classification__n_jobs": [-1]
         }
     },
     {
         "name": "Feed Forward Neural Network",
-        "classifier": MLPClassifier(),
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", MLPClassifier())
+        ]),
         "param_dist": {
-            "hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
-            "activation": ["identity", "logistic", "tanh", "relu"],
-            "solver": ["lbfgs", "sgd", "adam"],
-            "alpha": [1e-5, 1e-4, 1e-3, 1e-2],
-            "learning_rate": ["constant", "invscaling", "adaptive"],
-            "learning_rate_init": [1e-4, 1e-3, 1e-2],
-            "max_iter": [500, 700, 1000],
-            "shuffle": [False, True],
-            "random_state": [42],
-            "momentum": stats.uniform(0, 1),
-            "nesterovs_momentum": [False, True],
-            "beta_1": [1, 0.9, 0.8, 0.5, 0.1],
-            "beta_2": [0.9999, 0.999, 0.99, 0.9],
+            "classification__hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
+            "classification__activation": ["identity", "logistic", "tanh", "relu"],
+            "classification__solver": ["lbfgs", "sgd", "adam"],
+            "classification__alpha": [1e-5, 1e-4, 1e-3, 1e-2],
+            "classification__learning_rate": ["constant", "invscaling", "adaptive"],
+            "classification__learning_rate_init": [1e-4, 1e-3, 1e-2],
+            "classification__max_iter": [500, 700, 1000],
+            "classification__shuffle": [False, True],
+            "classification__random_state": [42],
+            "classification__momentum": stats.uniform(0, 1),
+            "classification__nesterovs_momentum": [False, True],
+            "classification__beta_1": [0.9999, 0.9, 0.8, 0.5, 0.1],
+            "classification__beta_2": [0.9999, 0.999, 0.99, 0.9],
         }
     },
     {
         "name": "Multinomial Naive Bayes",
-        "classifier": MultinomialNB(),
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", MultinomialNB())
+        ]),
         "param_dist": {
-            "alpha": [0, 0.5, 0.9, 1],
-            "fit_prior": [False, True]
+            "classification__alpha": [0, 0.5, 0.9, 1],
+            "classification__fit_prior": [False, True]
+        }
+    },
+    {
+        "name": "Random Forest Classifier",
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", RandomForestClassifier())
+        ]),
+        "param_dist": {
+            "classification__n_estimators": [10, 100, 150, 200, 300],
+            "classification__criterion": ["gini", "entropy"],
+            "classification__max_features": ["sqrt", "log2", "auto"],
+            "classification__n_jobs": [-1],
+            "classification__random_state": [42],
+            "classification__class_weight": [None, "balanced"]
         }
     }
 ]
-# TODO: oversampling leads to training data being in test data in the kfold cross validation
-for classifier_package in classifiers:
-    continue
-    accuracies = []
-    classifier = classifier_package["classifier"]
-    param_dist = classifier_package["param_dist"]
-    random_search = RandomizedSearchCV(classifier,
-                                       param_distributions=param_dist,
+
+for classifier_data in classifiers:
+    if SKIP_SEARCH:
+        continue
+    model = classifier_data["classifier"]
+    param_dist = classifier_data["param_dist"]
+    random_search = RandomizedSearchCV(model, param_distributions=param_dist,
                                        n_iter=RANDOMIZED_SEARCH_ITERATIONS,
                                        cv=K_FOLD_NUMBER
                                        # , scoring=make_scorer(f1_score, average="weighted")
                                        )
     random_search.fit(X_train, y_train)
     report(random_search.cv_results_)
-
-# output:
 """
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 3, 'n_jobs': -1, 'leaf_size': 150, 'algorithm': 'auto'}
+Mean validation score: 0.890 (std: 0.043)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 4, 'classification__n_jobs': -1, 'classification__leaf_size': 150, 'classification__algorithm': 'auto'}
 
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 30, 'algorithm': 'ball_tree'}
+Mean validation score: 0.890 (std: 0.043)
+Parameters: {'classification__weights': 'uniform', 'classification__p': 1, 'classification__n_neighbors': 4, 'classification__n_jobs': -1, 'classification__leaf_size': 150, 'classification__algorithm': 'ball_tree'}
 
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 20, 'algorithm': 'kd_tree'}
+Mean validation score: 0.890 (std: 0.043)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 4, 'classification__n_jobs': -1, 'classification__leaf_size': 30, 'classification__algorithm': 'kd_tree'}
 
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'weights': 'distance', 'p': 1, 'n_neighbors': 4, 'n_jobs': -1, 'leaf_size': 10, 'algorithm': 'kd_tree'}
-------
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.001, 'beta_1': 0.5, 'beta_2': 0.9999, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'max_iter': 500, 'momentum': 0.6980424280512796, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
+Mean validation score: 0.890 (std: 0.043)
+Parameters: {'classification__weights': 'uniform', 'classification__p': 1, 'classification__n_neighbors': 4, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'brute'}
 
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.0001, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layer_sizes': 50, 'learning_rate': 'adaptive', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.1494587234719731, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
+Mean validation score: 0.890 (std: 0.043)
+Parameters: {'classification__weights': 'uniform', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 30, 'classification__algorithm': 'ball_tree'}
 
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'identity', 'alpha': 0.01, 'beta_1': 0.5, 'beta_2': 0.999, 'hidden_layer_sizes': 50, 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.7455215801287599, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
+Mean validation score: 0.890 (std: 0.043)
+Parameters: {'classification__weights': 'uniform', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'brute'}
+---------------------
+---------------------
+sucks
+Model with rank: 1
+Mean validation score: 0.950 (std: 0.043)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.8004870606914816, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
+
+good
+Model with rank: 2
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.1, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.33678505066777575, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+optimal
+Model with rank: 2
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.504547384522401, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
+---------------------------------
+---------------------------------
+Model with rank: 1
+Mean validation score: 0.869 (std: 0.043)
+Parameters: {'classification__fit_prior': False, 'classification__alpha': 0.5}
 
 Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'identity', 'alpha': 0.01, 'beta_1': 0.9, 'beta_2': 0.9999, 'hidden_layer_sizes': 75, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.41418639699290927, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'tanh', 'alpha': 0.001, 'beta_1': 0.5, 'beta_2': 0.9999, 'hidden_layer_sizes': 100, 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'max_iter': 500, 'momentum': 0.16765559948854347, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'adam'}
-
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.1, 'beta_2': 0.9, 'hidden_layer_sizes': 50, 'learning_rate': 'constant', 'learning_rate_init': 0.0001, 'max_iter': 700, 'momentum': 0.4913184988689062, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'relu', 'alpha': 0.001, 'beta_1': 0.9, 'beta_2': 0.999, 'hidden_layer_sizes': 125, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 1000, 'momentum': 0.38656108682934, 'nesterovs_momentum': False, 'random_state': 42, 'shuffle': True, 'solver': 'adam'}
-
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'tanh', 'alpha': 0.0001, 'beta_1': 0.5, 'beta_2': 0.9999, 'hidden_layer_sizes': 450, 'learning_rate': 'invscaling', 'learning_rate_init': 0.01, 'max_iter': 1000, 'momentum': 0.5776675430336341, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.8, 'beta_2': 0.99, 'hidden_layer_sizes': 50, 'learning_rate': 'constant', 'learning_rate_init': 0.0001, 'max_iter': 1000, 'momentum': 0.15692525314837436, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': False, 'solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.996 (std: 0.006)
-Parameters: {'activation': 'logistic', 'alpha': 0.01, 'beta_1': 0.1, 'beta_2': 0.9, 'hidden_layer_sizes': 140, 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'max_iter': 700, 'momentum': 0.14873268357063663, 'nesterovs_momentum': True, 'random_state': 42, 'shuffle': True, 'solver': 'lbfgs'}
------
-Mean validation score: 0.979 (std: 0.016)
-Parameters: {'fit_prior': False, 'alpha': 0}
-
-Model with rank: 1
-Mean validation score: 0.979 (std: 0.016)
-Parameters: {'fit_prior': True, 'alpha': 0}
+Mean validation score: 0.869 (std: 0.043)
+Parameters: {'classification__fit_prior': True, 'classification__alpha': 0.5}
 
 Model with rank: 3
-Mean validation score: 0.963 (std: 0.032)
-Parameters: {'fit_prior': False, 'alpha': 0.5}
+Mean validation score: 0.839 (std: 0.062)
+Parameters: {'classification__fit_prior': False, 'classification__alpha': 0.9}
 
 Model with rank: 3
-Mean validation score: 0.963 (std: 0.032)
-Parameters: {'fit_prior': True, 'alpha': 0.5}
+Mean validation score: 0.839 (std: 0.062)
+Parameters: {'classification__fit_prior': True, 'classification__alpha': 0.9}
+----------------------------------
+----------------------------------
+best model so far
+Model with rank: 1
+Mean validation score: 0.940 (std: 0.045)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'sqrt', 'classification__criterion': 'gini', 'classification__class_weight': None}
 
+Model with rank: 1
+Mean validation score: 0.940 (std: 0.020)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
 
+Model with rank: 1
+Mean validation score: 0.940 (std: 0.020)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 100, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': None}
+
+Model with rank: 1
+Mean validation score: 0.940 (std: 0.045)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'sqrt', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
+
+Model with rank: 1
+Mean validation score: 0.940 (std: 0.020)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 150, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
+
+Model with rank: 1
+Mean validation score: 0.940 (std: 0.020)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 150, 'classification__max_features': 'sqrt', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
 
 """
 
-model = Pipeline([
-    ("sampling", RandomOverSampler(random_state=42)),
-    ("classification", MLPClassifier())
-])
+"""
+After 1000 random runs:
+doesnt work
+Model with rank: 1
+Mean validation score: 0.950 (std: 0.033)
+Parameters: {'classification__activation': 'relu', 'classification__alpha': 1e-05, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.024662022810686413, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'sgd'}
 
-param_dist = {
-    "classification__hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
-    "classification__activation": ["identity", "logistic", "tanh", "relu"],
-    "classification__solver": ["lbfgs", "sgd", "adam"],
-    "classification__alpha": [1e-5, 1e-4, 1e-3, 1e-2],
-    "classification__learning_rate": ["constant", "invscaling", "adaptive"],
-    "classification__learning_rate_init": [1e-4, 1e-3, 1e-2],
-    "classification__max_iter": [500, 700, 1000],
-    "classification__shuffle": [False, True],
-    "classification__random_state": [42],
-    "classification__momentum": stats.uniform(0, 1),
-    "classification__nesterovs_momentum": [False, True],
-    "classification__beta_1": [1, 0.9, 0.8, 0.5, 0.1],
-    "classification__beta_2": [0.9999, 0.999, 0.99, 0.9],
-}
+doesnt work
+Model with rank: 2
+Mean validation score: 0.940 (std: 0.034)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.01, 'classification__beta_1': 0.1, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.8186512105157959, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
 
-random_search = RandomizedSearchCV(model, param_distributions=param_dist,
-                                   n_iter=RANDOMIZED_SEARCH_ITERATIONS,
-                                   cv=K_FOLD_NUMBER
-                                   # , scoring=make_scorer(f1_score, average="weighted")
-                                   )
-random_search.fit(X_train, y_train)
-report(random_search.cv_results_)
+works but isn't better than what I generated already
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.4760240076094405, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+works but no improvement
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.25894866798476657, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+works but doesnt improve
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.22458085657377913, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 1e-05, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 75, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.8094376719579176, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 700, 'classification__momentum': 0.25339349128370736, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.0001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 75, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.9650340871315923, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.5, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.11530479402625593, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.06531245069723013, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 1e-05, 'classification__beta_1': 0.1, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 700, 'classification__momentum': 0.09881828774312418, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.7430288508568218, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.34098448591511876, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 700, 'classification__momentum': 0.9062746678823889, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.1656816404762106, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.9230044541445139, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.929721361338965, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.146149341171938, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'relu', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 500, 'classification__momentum': 0.9433021066364697, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'relu', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.6503265055352974, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.10580799159557763, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.9945415819321388, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.9, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.9118362481376419, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.0001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.5371537712029393, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.633146972990548, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 500, 'classification__momentum': 0.7346143898591809, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.3385191627388955, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.01, 'classification__beta_1': 0.1, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.2592049527751651, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 500, 'classification__momentum': 0.2807290186745015, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.6203996284111076, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.8402733869469622, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.07108381812926767, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.34672334261017734, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.9867900387576288, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.0001, 'classification__beta_1': 0.1, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.00959300244343253, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.0001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.39253698578813734, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.0001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.5396779136245641, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.211777714429764, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.2862021850478337, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.1, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 700, 'classification__momentum': 0.032102527721778906, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.01, 'classification__beta_1': 0.5, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 100, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.834882710338749, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.4237359589313181, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.04095485436573909, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.6042088422819918, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 700, 'classification__momentum': 0.5530417508074049, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.001, 'classification__beta_1': 0.9, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.628132046254909, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.1, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.6943704235999095, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 700, 'classification__momentum': 0.5344845169258648, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.8234148558577793, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.035)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.5, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.07552092001067101, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'relu', 'classification__alpha': 0.001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.5587156430226585, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'adam'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 1e-05, 'classification__beta_1': 0.1, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.919908204787091, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.045)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.1, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.013431232732374232, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 140, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 1000, 'classification__momentum': 0.9384790514450873, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'sgd'}
+
+Model with rank: 3
+Mean validation score: 0.939 (std: 0.021)
+Parameters: {'classification__activation': 'identity', 'classification__alpha': 1e-05, 'classification__beta_1': 0.9, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.5153069227852162, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
+
 
 """
-Model with rank: 1
-Mean validation score: 0.929 (std: 0.018)
-Parameters: {'classification__activation': 'tanh', 'classification__alpha': 1e-05, 'classification__beta_1': 0.1, 'classification__beta_2': 0.99, 'classification__hidden_layer_sizes': 450, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.5009070908512535, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.929 (std: 0.033)
-Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.0001, 'classification__beta_1': 0.5, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 1000, 'classification__momentum': 0.3025932556469719, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.929 (std: 0.018)
-Parameters: {'classification__activation': 'identity', 'classification__alpha': 0.0001, 'classification__beta_1': 0.1, 'classification__beta_2': 0.9, 'classification__hidden_layer_sizes': 300, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 500, 'classification__momentum': 0.8316173902449667, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__shuffle': False, 'classification__solver': 'lbfgs'}
-
-Model with rank: 1
-Mean validation score: 0.929 (std: 0.044)
-Parameters: {'classification__activation': 'relu', 'classification__alpha': 0.0001, 'classification__beta_1': 0.8, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 125, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.01, 'classification__max_iter': 700, 'classification__momentum': 0.6993644555972881, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__shuffle': True, 'classification__solver': 'adam'}
-
-
-"""
-
 
 """""
 classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500, random_state=42)
@@ -339,7 +536,21 @@ classifier.fit(master_df, classification_target)
 dump(classifier, "classifier.joblib")
 dump(min_max_scaler, "scaler.joblib")
 
-classifier = MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1,beta_2=0.99, hidden_layer_sizes=450, learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,momentum=0.5009070908512535, nesterovs_momentum=True,random_state=42, shuffle=False, solver='lbfgs')
+classifier = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt', criterion='gini', class_weight=None)
+classifier.fit(X_train, y_train)
+y_predictions = classifier.predict(X_test)
+print(accuracy_score(y_test, y_predictions))
+y_predictions = classifier.predict_proba(X_test)
+print(roc_auc_score(y_test, y_predictions, multi_class="ovo",
+                    average="weighted"))  # https://elitedatascience.com/imbalanced-classes
+print(f1_score(y_test, classifier.predict(X_test), average="weighted"))
+print("----")
+
+#current best:
+classifier = MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
+                           learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
+                           momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42, shuffle=False,
+                           solver='lbfgs')
 classifier.fit(X_train, y_train)
 y_predictions = classifier.predict(X_test)
 print(accuracy_score(y_test, y_predictions))
@@ -363,42 +574,15 @@ classifiers = [
     {
         "name": "K(3) Nearest Neighbor",
         "classifier": KNeighborsClassifier(n_neighbors=3),
-        "param_dist": {
-            "n_neighbors": [3, 4, 5, 6],
-            "weights": ["uniform", "distance"],
-            "algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
-            "leaf_size": [10, 20, 30, 75, 150, 300],
-            "p": [1, 2],
-            "n_jobs": [-1]
-        }
     },
     {
         "name": "Feed Forward Neural Network",
         "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
                                     random_state=42),
-        "param_dist": {
-            "hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
-            "activation": ["identity", "logistic", "tanh", "relu"],
-            "solver": ["lbfgs", "sgd", "adam"],
-            "alpha": [1e-5, 1e-4, 1e-3, 1e-2],
-            "learning_rate": ["constant", "invscaling", "adaptive"],
-            "learning_rate_init": [1e-4, 1e-3, 1e-2],
-            "max_iter": [100, 200, 500, 1000],
-            "shuffle": [False, True],
-            "random_state": [42],
-            "momentum": stats.uniform(0, 1),
-            "nesterovs_momentum": [False, True],
-            "beta_1": [1, 0.9, 0.8, 0.5, 0.1],
-            "beta_2": [0.9999, 0.999, 0.99, 0.9],
-        }
     },
     {
         "name": "Multinomial Naive Bayes",
         "classifier": MultinomialNB(),
-        "param_dist": {
-            "alpha": [0, 0.5, 0.9, 1],
-            "fit_prior": [False, True]
-        }
     }
 ]
 for classifier_data in classifiers:
