@@ -1,0 +1,7 @@
+import os
+MEASUREMENTS_FOLDER = os.fsencode("measurements")
+PRESSURE_FILE_PREFIX = "pressure_"
+WIFI_FILE_PREFIX = "wifi_"
+COMBINED_DATA_EXPORT_FILE_NAME = "combined_data.csv"
+UNI_WIFI_BSSID_REGEX_PATTERN = "\w\w:a0:57:\w\w:\w\w:\w\w"
+SSID_EXCLUDE_REGEX_PATTERN = "conference\.uni-regensburg\.de"
