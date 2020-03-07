@@ -21,11 +21,26 @@ from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
 from SETTINGS import EXPORT_FEATURE_VECTOR_FILE_NAME, COMBINED_DATA_EXPORT_FILE_NAME, CLASSIFIER_JOBLIB_FILE_NAME, \
     SCALER_JOBLIB_FILE_NAME, DBM_NA_FILL_VALUE
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier, VotingClassifier, StackingClassifier
 
 K_FOLD_NUMBER = 4
-RANDOMIZED_SEARCH_ITERATIONS = 30
+RANDOMIZED_SEARCH_ITERATIONS = 10
 SKIP_SEARCH = True
-OVERSAMPLE_VALIDATION_DATASET = False
+OVERSAMPLE_VALIDATION_DATASET = True
+SCALERS = [
+    preprocessing.MinMaxScaler,
+    preprocessing.StandardScaler,
+    preprocessing.RobustScaler,
+    preprocessing.MaxAbsScaler
+]
+SCALER = SCALERS[0]
+
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     {
         "name": "K(3) Nearest Neighbor",
@@ -93,7 +108,7 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
 ]
 CLASSIFIERS_FOR_EVALUATION = [
     {
-        "name": "K(3) Nearest Neighbor",
+        "name": "K Nearest Neighbor",
         "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
                                            n_jobs=-1, leaf_size=300, algorithm='auto'),
     },
@@ -117,7 +132,31 @@ CLASSIFIERS_FOR_EVALUATION = [
         "name": "Random searched Random Forest optimal",
         "classifier": RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
                                              criterion='gini', class_weight=None)
-    }
+    },
+    {
+        "name": "SVC",
+        "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
+    },
+    #{#commented out because this one takes forever and only goes up to about 70%
+    #    "name": "Gaussian Process Classifier",
+    #    "classifier": GaussianProcessClassifier(1.5 * RBF(10.0), random_state=42)
+    #},
+    {
+        "name": "AdaBoost Classifier",
+        "classifier": AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42), n_estimators=200, random_state=42)
+    },
+    #{#Features are collinear so this is useless
+    #    "name": "QuadraticDiscriminantAnalysis",
+    #    "classifier": QuadraticDiscriminantAnalysis()
+    #},
+    {
+        "name": "Gradient Boosting Classifier",
+        "classifier": GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5)
+    },
+    {
+        "name": "Bagging Classifier",
+        "classifier": BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1, base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15))
+    }, #maybe try a voting classifier?
 ]
 MODEL_TO_SERIALIZE = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
                                             criterion='gini',
@@ -185,14 +224,14 @@ def test_and_report_classifier_performance(classifier, name, X_train, y_train, X
     y_predictions_proba = classifier.predict_proba(X_validation)
     performance = {
         "accuracy": accuracy_score(y_validation, y_predictions),
-        "roc_auc": roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo",
-                                 average="weighted"),
-        "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
-        "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
-        "recall": recall_score(y_validation, y_predictions, average="weighted")
+        #"roc_auc": roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted"),
+        #"f1_score": f1_score(y_validation, y_predictions, average="weighted"),
+        #"precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
+        #"recall": recall_score(y_validation, y_predictions, average="weighted")
     }
     for key, value in performance.items():
         print(key, value)
+    print("")
 
 
 def conduct_random_search(X_train, y_train):
@@ -205,6 +244,7 @@ def conduct_random_search(X_train, y_train):
                                            # , scoring=make_scorer(f1_score, average="weighted")
                                            )
         random_search.fit(X_train, y_train)
+        print(model)
         report_search_top_results(random_search.cv_results_)
 
 
@@ -223,10 +263,10 @@ def load_and_clean_combined_data_df():
 
 
 def get_scaled_data_and_scaler(df):
-    min_max_scaler = preprocessing.MinMaxScaler()
-    df[df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(
+    scaler = SCALER()
+    df[df.columns.difference(['nodeId'])] = scaler.fit_transform(
         df[df.columns.difference(['nodeId'])])
-    return df, min_max_scaler
+    return df, scaler
 
 
 def split_into_train_and_validation_df(df):
