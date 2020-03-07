@@ -20,7 +20,7 @@ from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
 from SETTINGS import EXPORT_FEATURE_VECTOR_FILE_NAME, COMBINED_DATA_EXPORT_FILE_NAME, CLASSIFIER_JOBLIB_FILE_NAME, \
-    SCALER_JOBLIB_FILE_NAME
+    SCALER_JOBLIB_FILE_NAME, DBM_NA_FILL_VALUE
 
 K_FOLD_NUMBER = 4
 RANDOMIZED_SEARCH_ITERATIONS = 30
@@ -135,7 +135,7 @@ def report_search_result(results, n_top=3):
             print("")
 
 
-def save_feature_arry_column_order(feature_array):
+def save_feature_array_column_order(feature_array):
     feature_array[[False] * len(feature_array)].to_csv(
         EXPORT_FEATURE_VECTOR_FILE_NAME, index=False)
 
@@ -143,20 +143,6 @@ def save_feature_arry_column_order(feature_array):
 def assert_train_and_test_feature_vectors_are_distinct(train_df, test_df):
     assert (pd.merge(train_df, test_df, on=train_df.columns.to_list(), how='outer',
                      indicator='Exist')['Exist'].value_counts().both == 0)
-
-
-master_df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
-master_df.fillna(-100, inplace=True)
-master_df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
-master_df.drop_duplicates(inplace=True)
-min_max_scaler = preprocessing.MinMaxScaler()
-master_df[
-    master_df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(
-    master_df[master_df.columns.difference(['nodeId'])])
-train_df, validation_df = train_test_split(master_df, test_size=0.33, random_state=36,
-                                           stratify=master_df['nodeId'])
-assert_train_and_test_feature_vectors_are_distinct(train_df, validation_df)
-master_df = train_df
 
 
 def oversample_df(df):
@@ -174,35 +160,6 @@ def oversample_df(df):
                                                                          random_state=42)
         new_df = pd.concat([new_df, class_oversampled_df], axis=0)
     return new_df
-
-
-if OVERSAMPLE_VALIDATION_DATASET:
-    validation_df = oversample_df(validation_df)
-
-X_train = master_df.drop(['nodeId'], axis=1)
-y_train = master_df['nodeId']
-X_validation = validation_df.drop(['nodeId'], axis=1)
-y_validation = validation_df['nodeId']
-
-# test if any training data is also in the test data
-assert_train_and_test_feature_vectors_are_distinct(X_train, X_validation)
-
-save_feature_arry_column_order(X_train)
-
-print("doing " + str(K_FOLD_NUMBER) + "-fold cross validation now")
-
-for classifier_data in CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS:
-    if SKIP_SEARCH:
-        continue
-    model = classifier_data["classifier"]
-    param_dist = classifier_data["param_dist"]
-    random_search = RandomizedSearchCV(model, param_distributions=param_dist,
-                                       n_iter=RANDOMIZED_SEARCH_ITERATIONS,
-                                       cv=K_FOLD_NUMBER
-                                       # , scoring=make_scorer(f1_score, average="weighted")
-                                       )
-    random_search.fit(X_train, y_train)
-    report_search_result(random_search.cv_results_)
 
 
 def fit_model_on_test_and_validation_df(model, test_df, validation_df):
@@ -235,6 +192,47 @@ def test_and_report_classifier_performance(classifier, name, X_train, y_train, X
     for key, value in performance.items():
         print(key, value)
 
+
+master_df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
+master_df.fillna(DBM_NA_FILL_VALUE, inplace=True)
+master_df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
+master_df.drop_duplicates(inplace=True)
+min_max_scaler = preprocessing.MinMaxScaler()
+master_df[
+    master_df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(
+    master_df[master_df.columns.difference(['nodeId'])])
+train_df, validation_df = train_test_split(master_df, test_size=0.33, random_state=36,
+                                           stratify=master_df['nodeId'])
+assert_train_and_test_feature_vectors_are_distinct(train_df, validation_df)
+master_df = train_df
+
+if OVERSAMPLE_VALIDATION_DATASET:
+    validation_df = oversample_df(validation_df)
+
+X_train = master_df.drop(['nodeId'], axis=1)
+y_train = master_df['nodeId']
+X_validation = validation_df.drop(['nodeId'], axis=1)
+y_validation = validation_df['nodeId']
+
+# test if any training data is also in the test data
+assert_train_and_test_feature_vectors_are_distinct(X_train, X_validation)
+
+save_feature_array_column_order(X_train)
+
+print("doing " + str(K_FOLD_NUMBER) + "-fold cross validation now")
+
+for classifier_data in CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS:
+    if SKIP_SEARCH:
+        continue
+    model = classifier_data["classifier"]
+    param_dist = classifier_data["param_dist"]
+    random_search = RandomizedSearchCV(model, param_distributions=param_dist,
+                                       n_iter=RANDOMIZED_SEARCH_ITERATIONS,
+                                       cv=K_FOLD_NUMBER
+                                       # , scoring=make_scorer(f1_score, average="weighted")
+                                       )
+    random_search.fit(X_train, y_train)
+    report_search_result(random_search.cv_results_)
 
 for classifier_data in CLASSIFIERS_FOR_EVALUATION:
     test_and_report_classifier_performance(classifier_data["classifier"], classifier_data["name"], X_train, y_train,
