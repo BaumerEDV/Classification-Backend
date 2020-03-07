@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import \
     roc_auc_score  # https://elitedatascience.com/imbalanced-classes
-from sklearn.metrics import f1_score, make_scorer
+from sklearn.metrics import f1_score, make_scorer, precision_score, recall_score
 from sklearn import preprocessing
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import StratifiedKFold
@@ -19,12 +19,14 @@ from sklearn.utils import resample
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
+from SETTINGS import EXPORT_FEATURE_VECTOR_FILE_NAME, COMBINED_DATA_EXPORT_FILE_NAME, CLASSIFIER_JOBLIB_FILE_NAME, \
+    SCALER_JOBLIB_FILE_NAME
 
-EXPORT_FILE_NAME = "combined_data.csv"
-EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
+
 K_FOLD_NUMBER = 4
 RANDOMIZED_SEARCH_ITERATIONS = 30
 SKIP_SEARCH = True
+OVERSAMPLE_VALIDATION_DATASET = False
 
 
 # from: https://scikit-learn.org/stable/auto_examples/model_selection/plot_randomized_search.html#sphx-glr-auto-examples-model-selection-plot-randomized-search-py
@@ -46,7 +48,12 @@ def save_feature_arry_column_order(feature_array):
         EXPORT_FEATURE_VECTOR_FILE_NAME, index=False)
 
 
-master_df = pd.read_csv(EXPORT_FILE_NAME)
+def assert_train_and_test_feature_vectors_are_distinct(train_df, test_df):
+    assert (pd.merge(train_df, test_df, on=train_df.columns.to_list(), how='outer',
+                     indicator='Exist')['Exist'].value_counts().both == 0)
+
+
+master_df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
 master_df.fillna(-100, inplace=True)
 master_df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
 master_df.drop_duplicates(inplace=True)
@@ -54,41 +61,41 @@ min_max_scaler = preprocessing.MinMaxScaler()
 master_df[
     master_df.columns.difference(['nodeId'])] = min_max_scaler.fit_transform(
     master_df[master_df.columns.difference(['nodeId'])])
-train_df, test_df = train_test_split(master_df, test_size=0.33, random_state=36,
-                                     stratify=master_df['nodeId'])
-print(pd.merge(train_df, test_df, on=train_df.columns.to_list(), how='outer',
-               indicator='Exist')['Exist'].value_counts())
+train_df, validation_df = train_test_split(master_df, test_size=0.33, random_state=36,
+                                           stratify=master_df['nodeId'])
+assert_train_and_test_feature_vectors_are_distinct(train_df, validation_df)
 master_df = train_df
 
-"""
-#upsampling of test df
-most_common_class = test_df['nodeId'].value_counts().idxmax()
-n_most_common_class = test_df['nodeId'].value_counts().max()
-base_df = test_df.loc[test_df['nodeId'] == most_common_class]
-new_df = pd.DataFrame()
-for class_name in test_df['nodeId'].unique():
-    if class_name == most_common_class:
-        new_df = pd.concat([new_df, base_df], axis=0)
-        continue
-    n_class = (test_df.nodeId == class_name).sum()
-    class_oversampled_df = test_df.loc[test_df['nodeId'] == class_name].sample(n_most_common_class, replace=True, random_state=42)
-    new_df = pd.concat([new_df, class_oversampled_df], axis=0)
-    #https://www.kaggle.com/rafjaa/resampling-strategies-for-imbalanced-datasets
-test_df = new_df
-del new_df
-del base_df
-#print(master_df['nodeId'].unique())
-#end upsampling
-"""
+# upsampling of test df
+if OVERSAMPLE_VALIDATION_DATASET:
+    most_common_class = validation_df['nodeId'].value_counts().idxmax()
+    n_most_common_class = validation_df['nodeId'].value_counts().max()
+    base_df = validation_df.loc[validation_df['nodeId'] == most_common_class]
+    new_df = pd.DataFrame()
+    for class_name in validation_df['nodeId'].unique():
+        if class_name == most_common_class:
+            new_df = pd.concat([new_df, base_df], axis=0)
+            continue
+        n_class = (validation_df.nodeId == class_name).sum()
+        class_oversampled_df = validation_df.loc[validation_df['nodeId'] == class_name].sample(n_most_common_class,
+                                                                                               replace=True,
+                                                                                               random_state=42)
+        new_df = pd.concat([new_df, class_oversampled_df], axis=0)
+        # https://www.kaggle.com/rafjaa/resampling-strategies-for-imbalanced-datasets
+    validation_df = new_df
+    del new_df
+    del base_df
+# print(master_df['nodeId'].unique())
+# end upsampling
+
 
 X_train = master_df.drop(['nodeId'], axis=1)
 y_train = master_df['nodeId']
-X_test = test_df.drop(['nodeId'], axis=1)
-y_test = test_df['nodeId']
+X_validation = validation_df.drop(['nodeId'], axis=1)
+y_validation = validation_df['nodeId']
 
 # test if any training data is also in the test data
-print(pd.merge(X_train, X_test, on=X_train.columns.to_list(), how='outer',
-               indicator='Exist')['Exist'].value_counts())
+assert_train_and_test_feature_vectors_are_distinct(X_train, X_validation)
 
 save_feature_arry_column_order(X_train)
 
@@ -261,7 +268,7 @@ Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, '
 
 """
 
-master_df = pd.concat([master_df, test_df], axis=0)
+master_df = pd.concat([master_df, validation_df], axis=0)
 classification_target = master_df['nodeId']
 master_df = master_df.drop(['nodeId'], axis=1)
 
@@ -271,8 +278,8 @@ classifier = MLPClassifier(hidden_layer_sizes=140, max_iter=500,
 # classifier = KNeighborsClassifier(n_neighbors=3)
 classifier.fit(master_df, classification_target)
 
-dump(classifier, "classifier.joblib")
-dump(min_max_scaler, "scaler.joblib")
+dump(classifier, CLASSIFIER_JOBLIB_FILE_NAME)
+dump(min_max_scaler, SCALER_JOBLIB_FILE_NAME)
 
 classifiers = [
     {
@@ -306,9 +313,15 @@ for classifier_data in classifiers:
     classifier = classifier_data["classifier"]
     print(classifier_data["name"])
     classifier.fit(X_train, y_train)
-    y_predictions = classifier.predict(X_test)
-    print(accuracy_score(y_test, y_predictions))
-    y_predictions = classifier.predict_proba(X_test)
-    print(roc_auc_score(y_test, y_predictions, multi_class="ovo",
-                        average="weighted"))
-    print(f1_score(y_test, classifier.predict(X_test), average="weighted"))
+    y_predictions = classifier.predict(X_validation)
+    y_predictions_proba = classifier.predict_proba(X_validation)
+    performance = {
+        "accuracy": accuracy_score(y_validation, y_predictions),
+        "roc_auc": roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo",
+                        average="weighted"),
+        "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
+        "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
+        "recall": recall_score(y_validation, y_predictions, average="weighted")
+    }
+    for key, value in performance.items():
+        print(key, value)
