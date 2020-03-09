@@ -342,7 +342,7 @@ def report_classifiers_performance_on_stratified_kfold(master_df):
             y_train, y_test = y.iloc[train_index], y.iloc[test_index]
             if KFOLD_TEST_UPPER_STORIES_ONLY:
                 test_df = pd.merge(X_test, y_test, how="outer", left_index=True, right_index=True)
-                filter = test_df['nodeId'].str.contains("((.*\.2\..*)|(.*\.3\..*))")
+                filter = test_df['nodeId'].str.contains("(?:.*\.2\..*|.*\.3\..*)")
                 test_df = test_df[filter]
                 X_test, y_test = get_X_and_y_for_df(test_df)
             if OVERSAMPLE_KFOLD_VALIDATION_DATASETS:
