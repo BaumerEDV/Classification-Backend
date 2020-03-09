@@ -292,7 +292,7 @@ def report_classifiers_performance_on_validation_set(X_train, y_train, X_validat
 def load_and_clean_combined_data_df():
     df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
     df.fillna(DBM_NA_FILL_VALUE, inplace=True)
-    df.drop(['timestamp', 'Unnamed: 0'], axis=1, inplace=True)
+    df.drop(['timestamp', 'Unnamed: 0', 'pressure'], axis=1, inplace=True)
     df.drop_duplicates(inplace=True)
     return df
 

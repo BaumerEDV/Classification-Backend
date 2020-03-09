@@ -23,7 +23,7 @@ def get_classification_result_as_dict(measurement_dict):
     # TODO: if you were to transform the timestamp into more sophisticated forms of data, you'd do it here
     feature_vector = pd.concat(
         [FEATURES_HEAD, measurement_df[FEATURES_HEAD.columns.intersection(measurement_df.columns)]], sort=False)
-    feature_vector["pressure"].fillna(PRESSURE_NA_FILL_VALUE, inplace=True)
+    #feature_vector["pressure"].fillna(PRESSURE_NA_FILL_VALUE, inplace=True)
     feature_vector.fillna(DBM_NA_FILL_VALUE, inplace=True)
     feature_vector = SCALER.transform(feature_vector)
     predictions = CLASSIFIER.predict_proba(feature_vector)
