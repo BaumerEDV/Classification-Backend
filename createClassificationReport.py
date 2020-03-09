@@ -33,6 +33,7 @@ K_FOLD_NUMBER = 4
 RANDOMIZED_SEARCH_ITERATIONS = 10
 SKIP_SEARCH = True
 OVERSAMPLE_VALIDATION_DATASET = True
+OVERSAMPLE_KFOLD_VALIDATION_DATASETS = True
 SCALERS = [
     preprocessing.MinMaxScaler,
     preprocessing.StandardScaler,
@@ -40,7 +41,9 @@ SCALERS = [
     preprocessing.MaxAbsScaler
 ]
 SCALER = SCALERS[0]
-PIPELINE_CLASSIFIERS = True  # TODO: optimise this for every estimator, this also means for search some estimators shouldnt be in a pipeline
+OVERSAMPLE_ALL_CLASSIFIERS = False
+SHOW_VALIDATION_SET_PERFORMANCE = False
+SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = True
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     {
@@ -114,51 +117,68 @@ CLASSIFIERS_FOR_EVALUATION = [
                                            n_jobs=-1, leaf_size=300, algorithm='auto'),
     },
     {
-        "name": "Feed Forward Neural Network",  # equal pipeline
+        "name": "Feed Forward Neural Network",  # worse with pipeline
         "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
                                     random_state=42),
     },
     {
         "name": "Multinomial Naive Bayes",  # better with pipeline
-        "classifier": MultinomialNB(),
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", MultinomialNB())
+        ]),
     },
     {
-        "name": "Random searched MLP optimal",  # equal with pipeline
+        "name": "Random searched MLP optimal",  # worse with pipeline
         "classifier": MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
                                     learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
                                     momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42,
                                     shuffle=False, solver='lbfgs')
     },
     {
-        "name": "Random searched Random Forest optimal",  # equal with pipeline
-        "classifier": RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
-                                             criterion='gini', class_weight=None)
+        "name": "Random searched Random Forest optimal",  # better with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
+                                                      criterion='gini', class_weight=None))
+        ])
     },
     {
         "name": "SVC",  # equal with pipeline
         "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
     },
-    #{  # commented out because this one takes forever and only goes up to about 70%
+    # {  # commented out because this one takes forever and only goes up to about 70%
     #    "name": "Gaussian Process Classifier", # better with pipeline
     #    "classifier": GaussianProcessClassifier(1.5 * RBF(10.0), random_state=42)
-    #},
+    # },
     {
-        "name": "AdaBoost Classifier",  # worse with pipeline
-        "classifier": AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
-                                         n_estimators=200, random_state=42)
+        "name": "AdaBoost Classifier",  # better with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
+                                                  n_estimators=200, random_state=42))
+        ])
     },
-    #{  # Features are collinear so this is useless
+    # {  # Features are collinear so this is useless
     #    "name": "QuadraticDiscriminantAnalysis", # worse with pipeline
     #    "classifier": QuadraticDiscriminantAnalysis()
-    #},
+    # },
     {
-        "name": "Gradient Boosting Classifier", # better with pipeline
-        "classifier": GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5)
+        "name": "Gradient Boosting Classifier",  # better with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            (
+                "classification",
+                GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
+        ])
     },
     {
-        "name": "Bagging Classifier", # significantly better with pipeline - ties for best classifier
-        "classifier": BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
-                                        base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15))
+        "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
+                                                 base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15)))
+        ])
     },  # maybe try a voting classifier?
 ]
 MODEL_TO_SERIALIZE = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
@@ -227,9 +247,8 @@ def create_classifier_pipline_that_oversamples_training_data(classifier):
     ])
 
 
-def test_and_report_classifier_performance(classifier, name, X_train, y_train, X_validation, y_validation):
-    print(name)
-    if PIPELINE_CLASSIFIERS:
+def test_classifier_performance(classifier, X_train, y_train, X_validation, y_validation):
+    if OVERSAMPLE_ALL_CLASSIFIERS:
         classifier = create_classifier_pipline_that_oversamples_training_data(classifier)
     classifier.fit(X_train, y_train)
     y_predictions = classifier.predict(X_validation)
@@ -241,9 +260,7 @@ def test_and_report_classifier_performance(classifier, name, X_train, y_train, X
         "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
         "recall": recall_score(y_validation, y_predictions, average="weighted")
     }
-    for key, value in performance.items():
-        print(key, value)
-    print("")
+    return performance
 
 
 def conduct_random_search(X_train, y_train):
@@ -260,10 +277,14 @@ def conduct_random_search(X_train, y_train):
         report_search_top_results(random_search.cv_results_)
 
 
-def evaluate_classifiers(X_train, y_train, X_validation, y_validation):
+def report_classifiers_performance_on_validation_set(X_train, y_train, X_validation, y_validation):
     for classifier_data in CLASSIFIERS_FOR_EVALUATION:
-        test_and_report_classifier_performance(classifier_data["classifier"], classifier_data["name"], X_train, y_train,
-                                               X_validation, y_validation)
+        performance = test_classifier_performance(classifier_data["classifier"], X_train, y_train,
+                                                  X_validation, y_validation)
+        print(classifier_data["name"])
+        for key, value in performance.items():
+            print(key, value)
+        print("")
 
 
 def load_and_clean_combined_data_df():
@@ -286,9 +307,14 @@ def split_into_train_and_validation_df(df):
                             stratify=df['nodeId'])
 
 
+def get_X_and_y_for_df(df):
+    return df.drop(['nodeId'], axis=1), df['nodeId']
+
+
 def get_X_and_y_for_train_and_validation(train_df, validation_df):
-    return train_df.drop(['nodeId'], axis=1), train_df['nodeId'], validation_df.drop(['nodeId'], axis=1), validation_df[
-        'nodeId']
+    X_train, y_train = get_X_and_y_for_df(train_df)
+    X_validation, y_validation = get_X_and_y_for_df(validation_df)
+    return X_train, y_train, X_validation, y_validation
 
 
 def oversample_df_if_enabled(df):
@@ -303,6 +329,31 @@ def conduct_random_search_if_enabled(X_train, y_train):
         conduct_random_search(X_train, y_train)
 
 
+def report_classifiers_performance_on_stratified_kfold(master_df):
+    for classifier_data in CLASSIFIERS_FOR_EVALUATION:
+        skf = StratifiedKFold(n_splits=K_FOLD_NUMBER, random_state=42, shuffle=True)
+        total_results = {}
+        is_first_iteration = True
+        X, y = get_X_and_y_for_df(master_df)
+        for train_index, test_index in skf.split(X, y):
+            X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+            y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+            if OVERSAMPLE_KFOLD_VALIDATION_DATASETS:
+                test_df = pd.merge(X_test, y_test, how="outer", left_index=True, right_index=True)
+                test_df = oversample_df(test_df)
+                X_test, y_test = get_X_and_y_for_df(test_df)
+            results = test_classifier_performance(classifier_data["classifier"], X_train, y_train, X_test, y_test)
+            for key, value in results.items():
+                if is_first_iteration:
+                    total_results[key] = []
+                total_results[key].append(value)
+            is_first_iteration = False
+        print(classifier_data["name"])
+        for key, value in total_results.items():
+            print("Mean", key, mean(value))
+        print("")
+
+
 if __name__ == "__main__":
     master_df, min_max_scaler = get_scaled_data_and_scaler(load_and_clean_combined_data_df())
     train_df, validation_df = split_into_train_and_validation_df(master_df)
@@ -313,5 +364,75 @@ if __name__ == "__main__":
     save_model_and_scaler(fit_model_on_test_and_validation_df(MODEL_TO_SERIALIZE, train_df, validation_df),
                           min_max_scaler)
     conduct_random_search_if_enabled(X_train, y_train)
-    evaluate_classifiers(X_train, y_train, X_validation, y_validation)
+    if SHOW_VALIDATION_SET_PERFORMANCE:
+        report_classifiers_performance_on_validation_set(X_train, y_train, X_validation, y_validation)
+    if SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE:
+        report_classifiers_performance_on_stratified_kfold(master_df)
     pass
+
+"""
+4-fold cross validation vs oversampled test sets
+
+K Nearest Neighbor
+Mean accuracy 0.8995535714285714
+Mean roc_auc 0.9862516534391534
+Mean f1_score 0.8780869512378316
+Mean precision 0.9468253968253968
+Mean recall 0.8995535714285714
+
+Feed Forward Neural Network
+Mean accuracy 0.890625
+Mean roc_auc 0.9944302721088435
+Mean f1_score 0.8589023138776428
+Mean precision 0.9454267178362573
+Mean recall 0.890625
+
+Multinomial Naive Bayes
+Mean accuracy 0.8794642857142857
+Mean roc_auc 0.9958545918367347
+Mean f1_score 0.8527100711734515
+Mean precision 0.9260377209595959
+Mean recall 0.8794642857142857
+
+Random searched MLP optimal
+Mean accuracy 0.8950892857142857
+Mean roc_auc 0.9967474489795918
+Mean f1_score 0.8695118024283078
+Mean precision 0.9480034722222223
+Mean recall 0.8950892857142857
+
+Random searched Random Forest optimal
+Mean accuracy 0.9434523809523809
+Mean roc_auc 0.9986111111111111
+Mean f1_score 0.9357018849206349
+Mean precision 0.9563368055555556
+Mean recall 0.9434523809523809
+
+SVC
+Mean accuracy 0.8950892857142857
+Mean roc_auc 0.9955144557823129
+Mean f1_score 0.8634596055443096
+Mean precision 0.9488989400584795
+Mean recall 0.8950892857142857
+
+AdaBoost Classifier
+Mean accuracy 0.8392857142857143
+Mean roc_auc 0.9407283399470899
+Mean f1_score 0.80304765820802
+Mean precision 0.902428300865801
+Mean recall 0.8392857142857143
+
+Gradient Boosting Classifier
+Mean accuracy 0.9285714285714286
+Mean roc_auc 0.9949192176870748
+Mean f1_score 0.9127604166666666
+Mean precision 0.9539930555555556
+Mean recall 0.9285714285714286
+
+Bagging Classifier
+Mean accuracy 0.9434523809523809
+Mean roc_auc 0.9974229969765684
+Mean f1_score 0.9315900428153717
+Mean precision 0.9654513888888889
+Mean recall 0.9434523809523809
+"""
