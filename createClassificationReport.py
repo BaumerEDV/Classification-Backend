@@ -40,7 +40,7 @@ SCALERS = [
     preprocessing.MaxAbsScaler
 ]
 SCALER = SCALERS[0]
-PIPELINE_CLASSIFIERS = False #TODO: optimise this for every estimator, this also means for search some estimators shouldnt be in a pipeline
+PIPELINE_CLASSIFIERS = True  # TODO: optimise this for every estimator, this also means for search some estimators shouldnt be in a pipeline
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     {
@@ -109,54 +109,54 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
 ]
 CLASSIFIERS_FOR_EVALUATION = [
     {
-        "name": "K Nearest Neighbor",#worse with pipeline
+        "name": "K Nearest Neighbor",  # worse with pipeline
         "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
                                            n_jobs=-1, leaf_size=300, algorithm='auto'),
     },
     {
-        "name": "Feed Forward Neural Network",#equal pipeline
+        "name": "Feed Forward Neural Network",  # equal pipeline
         "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
                                     random_state=42),
     },
     {
-        "name": "Multinomial Naive Bayes",#better with pipeline
+        "name": "Multinomial Naive Bayes",  # better with pipeline
         "classifier": MultinomialNB(),
     },
     {
-        "name": "Random searched MLP optimal",#equal with pipeline
+        "name": "Random searched MLP optimal",  # equal with pipeline
         "classifier": MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
                                     learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
                                     momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42,
                                     shuffle=False, solver='lbfgs')
     },
     {
-        "name": "Random searched Random Forest optimal",#equal with pipeline
+        "name": "Random searched Random Forest optimal",  # equal with pipeline
         "classifier": RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
                                              criterion='gini', class_weight=None)
     },
     {
-        "name": "SVC",#equal with pipeline
+        "name": "SVC",  # equal with pipeline
         "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
     },
-    # {#commented out because this one takes forever and only goes up to about 70%
-    #    "name": "Gaussian Process Classifier",
+    #{  # commented out because this one takes forever and only goes up to about 70%
+    #    "name": "Gaussian Process Classifier", # better with pipeline
     #    "classifier": GaussianProcessClassifier(1.5 * RBF(10.0), random_state=42)
-    # },
+    #},
     {
-        "name": "AdaBoost Classifier",#worse with pipeline
+        "name": "AdaBoost Classifier",  # worse with pipeline
         "classifier": AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
                                          n_estimators=200, random_state=42)
     },
-    # {#Features are collinear so this is useless
-    #    "name": "QuadraticDiscriminantAnalysis",
+    #{  # Features are collinear so this is useless
+    #    "name": "QuadraticDiscriminantAnalysis", # worse with pipeline
     #    "classifier": QuadraticDiscriminantAnalysis()
-    # },
+    #},
     {
-        "name": "Gradient Boosting Classifier",
+        "name": "Gradient Boosting Classifier", # better with pipeline
         "classifier": GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5)
     },
     {
-        "name": "Bagging Classifier",
+        "name": "Bagging Classifier", # significantly better with pipeline - ties for best classifier
         "classifier": BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
                                         base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15))
     },  # maybe try a voting classifier?
@@ -236,10 +236,10 @@ def test_and_report_classifier_performance(classifier, name, X_train, y_train, X
     y_predictions_proba = classifier.predict_proba(X_validation)
     performance = {
         "accuracy": accuracy_score(y_validation, y_predictions),
-        # "roc_auc": roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted"),
-        # "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
-        # "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
-        # "recall": recall_score(y_validation, y_predictions, average="weighted")
+        "roc_auc": roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted"),
+        "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
+        "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
+        "recall": recall_score(y_validation, y_predictions, average="weighted")
     }
     for key, value in performance.items():
         print(key, value)
