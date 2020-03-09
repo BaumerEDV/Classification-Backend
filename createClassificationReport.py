@@ -29,11 +29,12 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier, VotingClassifier, StackingClassifier
 
-K_FOLD_NUMBER = 4
+K_FOLD_NUMBER = 10
 RANDOMIZED_SEARCH_ITERATIONS = 10
 SKIP_SEARCH = True
 OVERSAMPLE_VALIDATION_DATASET = True
 OVERSAMPLE_KFOLD_VALIDATION_DATASETS = True
+KFOLD_TEST_UPPER_STORIES_ONLY = True
 SCALERS = [
     preprocessing.MinMaxScaler,
     preprocessing.StandardScaler,
@@ -43,7 +44,7 @@ SCALERS = [
 SCALER = SCALERS[0]
 OVERSAMPLE_ALL_CLASSIFIERS = False
 SHOW_VALIDATION_SET_PERFORMANCE = False
-SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = False
+SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = True
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     {
@@ -111,75 +112,75 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     }
 ]
 CLASSIFIERS_FOR_EVALUATION = [
+    #{
+    #    "name": "K Nearest Neighbor",  # worse with pipeline
+    #    "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
+    #                                       n_jobs=-1, leaf_size=300, algorithm='auto'),
+    #},
+    #{
+    #    "name": "Feed Forward Neural Network",  # worse with pipeline
+    #    "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
+    #                                random_state=42),
+    #},
+    #{
+    #    "name": "Multinomial Naive Bayes",  # better with pipeline
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", MultinomialNB())
+    #    ]),
+    #},
+    #{
+    #    "name": "Random searched MLP",  # worse with pipeline
+    #    "classifier": MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
+    #                                learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
+    #                                momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42,
+    #                                shuffle=False, solver='lbfgs')
+    #},
     {
-        "name": "K Nearest Neighbor",  # worse with pipeline
-        "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
-                                           n_jobs=-1, leaf_size=300, algorithm='auto'),
-    },
-    {
-        "name": "Feed Forward Neural Network",  # worse with pipeline
-        "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
-                                    random_state=42),
-    },
-    {
-        "name": "Multinomial Naive Bayes",  # better with pipeline
-        "classifier": Pipeline([
-            ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", MultinomialNB())
-        ]),
-    },
-    {
-        "name": "Random searched MLP optimal",  # worse with pipeline
-        "classifier": MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
-                                    learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
-                                    momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42,
-                                    shuffle=False, solver='lbfgs')
-    },
-    {
-        "name": "Random searched Random Forest optimal",  # better with pipeline
+        "name": "Random searched Random Forest",  # better with pipeline
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
             ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
                                                       criterion='gini', class_weight=None))
         ])
     },
-    {
-        "name": "SVC",  # equal with pipeline
-        "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
-    },
+    #{
+    #    "name": "SVC",  # equal with pipeline
+    #    "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
+    #},
     # {  # commented out because this one takes forever and only goes up to about 70%
     #    "name": "Gaussian Process Classifier", # better with pipeline
     #    "classifier": GaussianProcessClassifier(1.5 * RBF(10.0), random_state=42)
     # },
-    {
-        "name": "AdaBoost Classifier",  # better with pipeline
-        "classifier": Pipeline([
-            ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
-                                                  n_estimators=200, random_state=42))
-        ])
-    },
+    #{
+    #    "name": "AdaBoost Classifier",  # better with pipeline
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
+    #                                              n_estimators=200, random_state=42))
+    #    ])
+    #},
     # {  # Features are collinear so this is useless
     #    "name": "QuadraticDiscriminantAnalysis", # worse with pipeline
     #    "classifier": QuadraticDiscriminantAnalysis()
     # },
-    {
-        "name": "Gradient Boosting Classifier",  # better with pipeline
-        "classifier": Pipeline([
-            ("sampling", RandomOverSampler(random_state=42)),
-            (
-                "classification",
-                GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
-        ])
-    },
-    {
-        "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
-        "classifier": Pipeline([
-            ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
-                                                 base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15)))
-        ])
-    },  # maybe try a voting classifier?
+    #{
+    #    "name": "Gradient Boosting Classifier",  # better with pipeline
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        (
+    #            "classification",
+    #            GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
+    #    ])
+    #},
+    #{
+    #    "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
+    #                                             base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15)))
+    #    ])
+    #},  # maybe try a voting classifier?
 ]
 MODEL_TO_SERIALIZE = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
                                             criterion='gini',
@@ -255,11 +256,12 @@ def test_classifier_performance(classifier, X_train, y_train, X_validation, y_va
     y_predictions_proba = classifier.predict_proba(X_validation)
     performance = {
         "accuracy": accuracy_score(y_validation, y_predictions),
-        "roc_auc": roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted"),
         "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
         "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
         "recall": recall_score(y_validation, y_predictions, average="weighted")
     }
+    if not KFOLD_TEST_UPPER_STORIES_ONLY:
+        performance["roc_auc"] = roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted")
     return performance
 
 
@@ -338,6 +340,11 @@ def report_classifiers_performance_on_stratified_kfold(master_df):
         for train_index, test_index in skf.split(X, y):
             X_train, X_test = X.iloc[train_index], X.iloc[test_index]
             y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+            if KFOLD_TEST_UPPER_STORIES_ONLY:
+                test_df = pd.merge(X_test, y_test, how="outer", left_index=True, right_index=True)
+                filter = test_df['nodeId'].str.contains("((.*\.2\..*)|(.*\.3\..*))")
+                test_df = test_df[filter]
+                X_test, y_test = get_X_and_y_for_df(test_df)
             if OVERSAMPLE_KFOLD_VALIDATION_DATASETS:
                 test_df = pd.merge(X_test, y_test, how="outer", left_index=True, right_index=True)
                 test_df = oversample_df(test_df)
@@ -371,68 +378,68 @@ if __name__ == "__main__":
     pass
 
 """
-4-fold cross validation vs oversampled test sets
+10-fold cross validation vs oversampled test sets
 
 K Nearest Neighbor
-Mean accuracy 0.8995535714285714
-Mean roc_auc 0.9862516534391534
-Mean f1_score 0.8780869512378316
-Mean precision 0.9468253968253968
-Mean recall 0.8995535714285714
+Mean accuracy 0.9483193277310924
+Mean roc_auc 0.9919332505729564
+Mean f1_score 0.9415957444485946
+Mean precision 0.9633945547916136
+Mean recall 0.9483193277310924
 
 Feed Forward Neural Network
-Mean accuracy 0.890625
-Mean roc_auc 0.9944302721088435
-Mean f1_score 0.8589023138776428
-Mean precision 0.9454267178362573
-Mean recall 0.890625
+Mean accuracy 0.9507352941176471
+Mean roc_auc 0.9990252066735785
+Mean f1_score 0.9453727420265847
+Mean precision 0.9659520626432391
+Mean recall 0.9507352941176471
 
 Multinomial Naive Bayes
-Mean accuracy 0.8794642857142857
-Mean roc_auc 0.9958545918367347
-Mean f1_score 0.8527100711734515
-Mean precision 0.9260377209595959
-Mean recall 0.8794642857142857
+Mean accuracy 0.8835084033613445
+Mean roc_auc 0.9982071805995124
+Mean f1_score 0.8634469694893274
+Mean precision 0.9177850213511978
+Mean recall 0.8835084033613445
 
 Random searched MLP optimal
-Mean accuracy 0.8950892857142857
-Mean roc_auc 0.9967474489795918
-Mean f1_score 0.8695118024283078
-Mean precision 0.9480034722222223
-Mean recall 0.8950892857142857
+Mean accuracy 0.9444327731092437
+Mean roc_auc 0.9988593448743134
+Mean f1_score 0.9372378745821652
+Mean precision 0.9602630457777517
+Mean recall 0.9444327731092437
 
 Random searched Random Forest optimal
-Mean accuracy 0.9434523809523809
-Mean roc_auc 0.9986111111111111
-Mean f1_score 0.9357018849206349
-Mean precision 0.9563368055555556
-Mean recall 0.9434523809523809
+Mean accuracy 0.9688025210084034
+Mean roc_auc 0.9997070276974426
+Mean f1_score 0.9642325638858602
+Mean precision 0.9789105502340797
+Mean recall 0.9688025210084034
 
 SVC
-Mean accuracy 0.8950892857142857
-Mean roc_auc 0.9955144557823129
-Mean f1_score 0.8634596055443096
-Mean precision 0.9488989400584795
-Mean recall 0.8950892857142857
+Mean accuracy 0.9588235294117647
+Mean roc_auc 0.9994311360908
+Mean f1_score 0.9535847723120078
+Mean precision 0.968893818599701
+Mean recall 0.9588235294117647
 
 AdaBoost Classifier
-Mean accuracy 0.8392857142857143
-Mean roc_auc 0.9407283399470899
-Mean f1_score 0.80304765820802
-Mean precision 0.902428300865801
-Mean recall 0.8392857142857143
+Mean accuracy 0.9507878151260504
+Mean roc_auc 0.9993759151387828
+Mean f1_score 0.943926636664328
+Mean precision 0.9687091666503431
+Mean recall 0.9507878151260504
 
 Gradient Boosting Classifier
-Mean accuracy 0.9285714285714286
-Mean roc_auc 0.9949192176870748
-Mean f1_score 0.9127604166666666
-Mean precision 0.9539930555555556
-Mean recall 0.9285714285714286
+Mean accuracy 0.9415966386554622
+Mean roc_auc 0.996313496989705
+Mean f1_score 0.9341724754539202
+Mean precision 0.958873838579721
+Mean recall 0.9415966386554622
 
 Bagging Classifier
-Mean accuracy 0.9434523809523809
-Mean roc_auc 0.9974229969765684
-Mean f1_score 0.9315900428153717
-Mean precision 0.9654513888888889
-Mean recall 0.9434523809523809
+Mean accuracy 0.9434348739495798
+Mean roc_auc 0.9991024250609335
+Mean f1_score 0.9354250884539084
+Mean precision 0.9597535389447154
+Mean recall 0.9434348739495798
 """
