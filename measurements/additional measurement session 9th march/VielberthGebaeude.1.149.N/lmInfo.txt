@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.1.149;Plakatwand mit Mülleimer;Landmark;VielberthGebaeude;1;1919.00;1048.00;DATA;N;false

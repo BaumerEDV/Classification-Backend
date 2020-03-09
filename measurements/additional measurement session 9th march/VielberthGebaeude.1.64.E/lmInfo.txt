@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.1.64;Catering;branch;VielberthGebaeude;1;469.00;1365.00;DATA;E;false

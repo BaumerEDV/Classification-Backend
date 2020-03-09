@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.1.71;WR H;Toilet;VielberthGebaeude;1;1077.00;1324.00;DATA;NW;false

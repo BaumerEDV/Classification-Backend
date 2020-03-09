@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.1.148;Holzverkleidung;Landmark;VielberthGebaeude;1;721.00;856.00;DATA;SE;false

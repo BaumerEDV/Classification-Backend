@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.2.65;Seminarraum 9;branch;VielberthGebaeude;2;2060.00;1349.00;DATA;NE;false

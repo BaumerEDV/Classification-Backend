@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.3.48;H25;branch;VielberthGebaeude;3;1306.00;1050.00;DATA;SE;false
