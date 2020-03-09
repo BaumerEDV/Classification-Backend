@@ -29,12 +29,12 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier, VotingClassifier, StackingClassifier
 
-K_FOLD_NUMBER = 10
+K_FOLD_NUMBER = 5
 RANDOMIZED_SEARCH_ITERATIONS = 10
 SKIP_SEARCH = True
 OVERSAMPLE_VALIDATION_DATASET = True
 OVERSAMPLE_KFOLD_VALIDATION_DATASETS = True
-KFOLD_TEST_UPPER_STORIES_ONLY = True
+KFOLD_TEST_UPPER_STORIES_ONLY = False
 SCALERS = [
     preprocessing.MinMaxScaler,
     preprocessing.StandardScaler,
@@ -401,14 +401,14 @@ Mean f1_score 0.8634469694893274
 Mean precision 0.9177850213511978
 Mean recall 0.8835084033613445
 
-Random searched MLP optimal
+Random searched MLP
 Mean accuracy 0.9444327731092437
 Mean roc_auc 0.9988593448743134
 Mean f1_score 0.9372378745821652
 Mean precision 0.9602630457777517
 Mean recall 0.9444327731092437
 
-Random searched Random Forest optimal
+Random searched Random Forest
 Mean accuracy 0.9688025210084034
 Mean roc_auc 0.9997070276974426
 Mean f1_score 0.9642325638858602
