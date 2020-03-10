@@ -2,7 +2,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix
 from sklearn.metrics import \
     roc_auc_score  # https://elitedatascience.com/imbalanced-classes
 from sklearn.metrics import f1_score, make_scorer, precision_score, recall_score
@@ -20,7 +20,7 @@ from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.ensemble import RandomForestClassifier
 from SETTINGS import EXPORT_FEATURE_VECTOR_FILE_NAME, COMBINED_DATA_EXPORT_FILE_NAME, CLASSIFIER_JOBLIB_FILE_NAME, \
-    SCALER_JOBLIB_FILE_NAME, DBM_NA_FILL_VALUE
+    SCALER_JOBLIB_FILE_NAME, DBM_NA_FILL_VALUE, CONFIRMATION_MEASUREMENT_EXPORT_FILE_NAME
 from sklearn.svm import SVC
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
@@ -28,11 +28,16 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier, VotingClassifier, StackingClassifier
+import os
+
+# this code uses the word test dataset for the dataset that assesses the performance during training
+# this code uses the word validation dataset for the dataset that assesses the real world generalizability of a model
+
 
 K_FOLD_NUMBER = 5
 RANDOMIZED_SEARCH_ITERATIONS = 10
 SKIP_SEARCH = True
-OVERSAMPLE_VALIDATION_DATASET = True
+OVERSAMPLE_VALIDATION_DATASET = False
 OVERSAMPLE_KFOLD_VALIDATION_DATASETS = True
 KFOLD_TEST_UPPER_STORIES_ONLY = False
 SCALERS = [
@@ -44,7 +49,8 @@ SCALERS = [
 SCALER = SCALERS[0]
 OVERSAMPLE_ALL_CLASSIFIERS = False
 SHOW_VALIDATION_SET_PERFORMANCE = False
-SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = True
+SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = False
+SHOW_CONFIRMATION_SET_PERFORMANCE = True
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     {
@@ -85,17 +91,6 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
         }
     },
     {
-        "name": "Multinomial Naive Bayes",
-        "classifier": Pipeline([
-            ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", MultinomialNB())
-        ]),
-        "param_dist": {
-            "classification__alpha": [0, 0.5, 0.9, 1],
-            "classification__fit_prior": [False, True]
-        }
-    },
-    {
         "name": "Random Forest Classifier",
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
@@ -112,30 +107,30 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     }
 ]
 CLASSIFIERS_FOR_EVALUATION = [
-    #{
+    # {
     #    "name": "K Nearest Neighbor",  # worse with pipeline
     #    "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
     #                                       n_jobs=-1, leaf_size=300, algorithm='auto'),
-    #},
-    #{
+    # },
+    # {
     #    "name": "Feed Forward Neural Network",  # worse with pipeline
     #    "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
     #                                random_state=42),
-    #},
-    #{
+    # },
+    # {
     #    "name": "Multinomial Naive Bayes",  # better with pipeline
     #    "classifier": Pipeline([
     #        ("sampling", RandomOverSampler(random_state=42)),
     #        ("classification", MultinomialNB())
     #    ]),
-    #},
-    #{
+    # },
+    # {
     #    "name": "Random searched MLP",  # worse with pipeline
     #    "classifier": MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
     #                                learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
     #                                momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42,
     #                                shuffle=False, solver='lbfgs')
-    #},
+    # },
     {
         "name": "Random searched Random Forest",  # better with pipeline
         "classifier": Pipeline([
@@ -144,27 +139,27 @@ CLASSIFIERS_FOR_EVALUATION = [
                                                       criterion='gini', class_weight=None))
         ])
     },
-    #{
+    # {
     #    "name": "SVC",  # equal with pipeline
     #    "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
-    #},
+    # },
     # {  # commented out because this one takes forever and only goes up to about 70%
     #    "name": "Gaussian Process Classifier", # better with pipeline
     #    "classifier": GaussianProcessClassifier(1.5 * RBF(10.0), random_state=42)
     # },
-    #{
+    # {
     #    "name": "AdaBoost Classifier",  # better with pipeline
     #    "classifier": Pipeline([
     #        ("sampling", RandomOverSampler(random_state=42)),
     #        ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
     #                                              n_estimators=200, random_state=42))
     #    ])
-    #},
+    # },
     # {  # Features are collinear so this is useless
     #    "name": "QuadraticDiscriminantAnalysis", # worse with pipeline
     #    "classifier": QuadraticDiscriminantAnalysis()
     # },
-    #{
+    # {
     #    "name": "Gradient Boosting Classifier",  # better with pipeline
     #    "classifier": Pipeline([
     #        ("sampling", RandomOverSampler(random_state=42)),
@@ -172,15 +167,15 @@ CLASSIFIERS_FOR_EVALUATION = [
     #            "classification",
     #            GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
     #    ])
-    #},
-    #{
+    # },
+    # {
     #    "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
     #    "classifier": Pipeline([
     #        ("sampling", RandomOverSampler(random_state=42)),
     #        ("classification", BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
     #                                             base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15)))
     #    ])
-    #},  # maybe try a voting classifier?
+    # },  # maybe try a voting classifier?
 ]
 MODEL_TO_SERIALIZE = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
                                             criterion='gini',
@@ -256,12 +251,14 @@ def test_classifier_performance(classifier, X_train, y_train, X_validation, y_va
     y_predictions_proba = classifier.predict_proba(X_validation)
     performance = {
         "accuracy": accuracy_score(y_validation, y_predictions),
-        "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
-        "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
-        "recall": recall_score(y_validation, y_predictions, average="weighted")
+        "balanced accuracy": balanced_accuracy_score(y_validation, y_predictions),
+        # "f1_score": f1_score(y_validation, y_predictions, average="weighted"),
+        # "precision": precision_score(y_validation, y_predictions, average="weighted", zero_division=1),
+        # "recall": recall_score(y_validation, y_predictions, average="weighted")
     }
     if not KFOLD_TEST_UPPER_STORIES_ONLY:
-        performance["roc_auc"] = roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted")
+        # performance["roc_auc"] = roc_auc_score(y_validation, y_predictions_proba, multi_class="ovo", average="weighted")
+        pass
     return performance
 
 
@@ -289,8 +286,8 @@ def report_classifiers_performance_on_validation_set(X_train, y_train, X_validat
         print("")
 
 
-def load_and_clean_combined_data_df():
-    df = pd.read_csv(COMBINED_DATA_EXPORT_FILE_NAME)
+def load_and_clean_combined_data_df_from_file_name(filename):
+    df = pd.read_csv(filename)
     df.fillna(DBM_NA_FILL_VALUE, inplace=True)
     df.drop(['timestamp', 'Unnamed: 0', 'pressure'], axis=1, inplace=True)
     df.drop_duplicates(inplace=True)
@@ -361,8 +358,42 @@ def report_classifiers_performance_on_stratified_kfold(master_df):
         print("")
 
 
+def get_scaled_df_from_scaler(df, scaler):
+    df[df.columns.difference(['nodeId'])] = scaler.transform(
+        df[df.columns.difference(['nodeId'])])
+    return df
+
+
+def load_confirmation_df_into_feature_vectors_using_scaler_based_on_master_df_classes(scaler, classes):
+    confirmation_df = load_and_clean_combined_data_df_from_file_name(CONFIRMATION_MEASUREMENT_EXPORT_FILE_NAME)
+    features_head = pd.read_csv(EXPORT_FEATURE_VECTOR_FILE_NAME)
+    features_head['nodeId'] = {}
+    confirmation_df = pd.concat(
+        [features_head, confirmation_df[features_head.columns.intersection(confirmation_df.columns)]], sort=False)
+    confirmation_df = confirmation_df[confirmation_df["nodeId"].isin(classes)]
+    confirmation_df.drop_duplicates(inplace=True)
+    confirmation_df.fillna(DBM_NA_FILL_VALUE, inplace=True)
+    confirmation_df = get_scaled_df_from_scaler(confirmation_df, scaler)
+    return confirmation_df
+
+
+def show_classifiers_confusion_matrix_on_validation_set(X_train, y_train, X_test, y_test):
+    for classifier_data in CLASSIFIERS_FOR_EVALUATION:
+        classifier = classifier_data["classifier"]
+        name = classifier_data["name"]
+        classifier.fit(X_train, y_train)
+        y_predictions = classifier.predict(X_test)
+        # confusion matrix code from https://stackoverflow.com/a/50329263/7782700
+        labels = classifier.classes_
+        matrix_df = pd.DataFrame(confusion_matrix(y_test, y_predictions), columns=labels, index=labels)
+        matrix_df = matrix_df.add_prefix("pred_")
+        matrix_df.to_csv(os.path.join("confusion_matrices", name + ".csv"))
+        #print(matrix_df)
+
+
 if __name__ == "__main__":
-    master_df, min_max_scaler = get_scaled_data_and_scaler(load_and_clean_combined_data_df())
+    master_df, min_max_scaler = get_scaled_data_and_scaler(
+        load_and_clean_combined_data_df_from_file_name(COMBINED_DATA_EXPORT_FILE_NAME))
     train_df, validation_df = split_into_train_and_validation_df(master_df)
     validation_df = oversample_df_if_enabled(validation_df)
     X_train, y_train, X_validation, y_validation = get_X_and_y_for_train_and_validation(train_df, validation_df)
@@ -375,6 +406,14 @@ if __name__ == "__main__":
         report_classifiers_performance_on_validation_set(X_train, y_train, X_validation, y_validation)
     if SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE:
         report_classifiers_performance_on_stratified_kfold(master_df)
+    # test performance on new data
+    confirmation_df = load_confirmation_df_into_feature_vectors_using_scaler_based_on_master_df_classes(min_max_scaler, master_df["nodeId"].unique())
+    if SHOW_CONFIRMATION_SET_PERFORMANCE:
+        X_confirmation, y_confirmation = get_X_and_y_for_df(confirmation_df)
+        X_master, y_master = get_X_and_y_for_df(master_df)
+        print("info for confirmation dataset, using all master data for training")
+        report_classifiers_performance_on_validation_set(X_master, y_master, X_confirmation, y_confirmation)
+        show_classifiers_confusion_matrix_on_validation_set(X_master, y_master, X_confirmation, y_confirmation)
     pass
 
 """

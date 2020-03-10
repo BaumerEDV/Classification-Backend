@@ -10,3 +10,5 @@ EXPORT_FEATURE_VECTOR_FILE_NAME = "feature_vector_head.csv"
 CLASSIFIER_JOBLIB_FILE_NAME = "classifier.joblib"
 SCALER_JOBLIB_FILE_NAME = "scaler.joblib"
 DBM_NA_FILL_VALUE = -100
+CONFIRMATION_MEASUREMENT_EXPORT_FILE_NAME = "confirmation_data.csv"
+CONFIRMATION_MEASUREMENTS_FOLDER = os.fsencode("confirmation_measurements")
