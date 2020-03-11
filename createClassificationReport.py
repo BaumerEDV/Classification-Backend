@@ -29,6 +29,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier, VotingClassifier, StackingClassifier
 import os
+import warnings
 
 # this code uses the word test dataset for the dataset that assesses the performance during training
 # this code uses the word validation dataset for the dataset that assesses the real world generalizability of a model
@@ -38,7 +39,7 @@ K_FOLD_NUMBER = 5
 RANDOMIZED_SEARCH_ITERATIONS = 10
 SKIP_SEARCH = True
 OVERSAMPLE_VALIDATION_DATASET = False
-OVERSAMPLE_KFOLD_VALIDATION_DATASETS = True
+OVERSAMPLE_KFOLD_VALIDATION_DATASETS = False
 KFOLD_TEST_UPPER_STORIES_ONLY = False
 SCALERS = [
     preprocessing.MinMaxScaler,
@@ -51,12 +52,13 @@ OVERSAMPLE_ALL_CLASSIFIERS = False
 SHOW_VALIDATION_SET_PERFORMANCE = False
 SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = False
 SHOW_CONFIRMATION_SET_PERFORMANCE = True
+SUPPRESS_ALL_WARNINGS = True
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     {
         "name": "K(3) Nearest Neighbor",
         "classifier": Pipeline([
-            ("sampling", RandomOverSampler(random_state=42)),
+            # ("sampling", RandomOverSampler(random_state=42)),
             ("classification", KNeighborsClassifier())
         ]),
         "param_dist": {
@@ -66,7 +68,8 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
             "classification__leaf_size": [10, 20, 30, 75, 150, 300],
             "classification__p": [1, 2],
             "classification__n_jobs": [-1]
-        }
+        },
+        "iterations": 250
     },
     {
         "name": "Feed Forward Neural Network",
@@ -75,20 +78,20 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
             ("classification", MLPClassifier())
         ]),
         "param_dist": {
-            "classification__hidden_layer_sizes": [50, 75, 100, 125, 140, 300, 450],
+            "classification__hidden_layer_sizes": [50, 75, 100, 125, 140, 300, (100, 100)],
             "classification__activation": ["identity", "logistic", "tanh", "relu"],
             "classification__solver": ["lbfgs", "sgd", "adam"],
             "classification__alpha": [1e-5, 1e-4, 1e-3, 1e-2],
             "classification__learning_rate": ["constant", "invscaling", "adaptive"],
             "classification__learning_rate_init": [1e-4, 1e-3, 1e-2],
             "classification__max_iter": [500, 700, 1000],
-            "classification__shuffle": [False, True],
             "classification__random_state": [42],
             "classification__momentum": stats.uniform(0, 1),
             "classification__nesterovs_momentum": [False, True],
             "classification__beta_1": [0.9999, 0.9, 0.8, 0.5, 0.1],
             "classification__beta_2": [0.9999, 0.999, 0.99, 0.9],
-        }
+        },
+        "iterations": 1000
     },
     {
         "name": "Random Forest Classifier",
@@ -97,26 +100,49 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
             ("classification", RandomForestClassifier())
         ]),
         "param_dist": {
-            "classification__n_estimators": [10, 100, 150, 200, 300],
+            "classification__n_estimators": [10, 50, 100, 125, 150, 175, 200, 250, 300],
             "classification__criterion": ["gini", "entropy"],
             "classification__max_features": ["sqrt", "log2", "auto"],
             "classification__n_jobs": [-1],
             "classification__random_state": [42],
             "classification__class_weight": [None, "balanced"]
-        }
+        },
+        "iterations": 120
     }
 ]
 CLASSIFIERS_FOR_EVALUATION = [
-    # {
-    #    "name": "K Nearest Neighbor",  # worse with pipeline
-    #    "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
-    #                                       n_jobs=-1, leaf_size=300, algorithm='auto'),
-    # },
+    {
+        "name": "K Nearest Neighbor",  # worse with pipeline
+        "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
+                                           n_jobs=-1, leaf_size=300, algorithm='auto'),
+    },
+    {
+        "name": "K Nearest Neighbor Random Searched",  # worse with pipeline
+        "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=3,
+                                           n_jobs=-1, leaf_size=10, algorithm='auto'),
+    },
     # {
     #    "name": "Feed Forward Neural Network",  # worse with pipeline
     #    "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
     #                                random_state=42),
     # },
+    {
+        "name": "Feed Forward Neural Network 11th Mar Random Search",  # worse with pipeline
+        "classifier": MLPClassifier(activation="logistic", alpha=0.01, beta_1=0.9, beta_2=0.999,
+                                    hidden_layer_sizes=300, learning_rate="constant", learning_rate_init=0.001,
+                                    max_iter=700, momentum=0.7206236910652511, nesterovs_momentum=False,
+                                    random_state=42, solver="adam"),
+    },
+    #{
+    #    "name": "MLP 11th Mar Random Search pipeline",
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", MLPClassifier(activation="logistic", alpha=0.01, beta_1=0.9, beta_2=0.999,
+    #                                         hidden_layer_sizes=300, learning_rate="constant", learning_rate_init=0.001,
+    #                                         max_iter=700, momentum=0.7206236910652511, nesterovs_momentum=False,
+    #                                         random_state=42, solver="adam"))
+    #    ])
+    #},
     # {
     #    "name": "Multinomial Naive Bayes",  # better with pipeline
     #    "classifier": Pipeline([
@@ -132,10 +158,18 @@ CLASSIFIERS_FOR_EVALUATION = [
     #                                shuffle=False, solver='lbfgs')
     # },
     {
-        "name": "Random searched Random Forest",  # better with pipeline
+        "name": "Random Forest",  # better with pipeline
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
             ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
+                                                      criterion='gini', class_weight=None))
+        ])
+    },
+    {
+        "name": "Random Searched 11th mar Random Forest",  # better with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='log2',
                                                       criterion='gini', class_weight=None))
         ])
     },
@@ -264,12 +298,13 @@ def test_classifier_performance(classifier, X_train, y_train, X_validation, y_va
 
 def conduct_random_search(X_train, y_train):
     for classifier_data in CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS:
+        iterations = classifier_data["iterations"]
         model = classifier_data["classifier"]
         param_dist = classifier_data["param_dist"]
         random_search = RandomizedSearchCV(model, param_distributions=param_dist,
-                                           n_iter=RANDOMIZED_SEARCH_ITERATIONS,
+                                           n_iter=iterations,
                                            cv=K_FOLD_NUMBER
-                                           # , scoring=make_scorer(f1_score, average="weighted")
+                                           , scoring=make_scorer(balanced_accuracy_score)
                                            )
         random_search.fit(X_train, y_train)
         print(model)
@@ -388,10 +423,12 @@ def show_classifiers_confusion_matrix_on_validation_set(X_train, y_train, X_test
         matrix_df = pd.DataFrame(confusion_matrix(y_test, y_predictions), columns=labels, index=labels)
         matrix_df = matrix_df.add_prefix("pred_")
         matrix_df.to_csv(os.path.join("confusion_matrices", name + ".csv"))
-        #print(matrix_df)
+        # print(matrix_df)
 
 
 if __name__ == "__main__":
+    if SUPPRESS_ALL_WARNINGS:
+        warnings.filterwarnings("ignore")
     master_df, min_max_scaler = get_scaled_data_and_scaler(
         load_and_clean_combined_data_df_from_file_name(COMBINED_DATA_EXPORT_FILE_NAME))
     train_df, validation_df = split_into_train_and_validation_df(master_df)
@@ -407,7 +444,9 @@ if __name__ == "__main__":
     if SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE:
         report_classifiers_performance_on_stratified_kfold(master_df)
     # test performance on new data
-    confirmation_df = load_confirmation_df_into_feature_vectors_using_scaler_based_on_master_df_classes(min_max_scaler, master_df["nodeId"].unique())
+    confirmation_df = load_confirmation_df_into_feature_vectors_using_scaler_based_on_master_df_classes(min_max_scaler,
+                                                                                                        master_df[
+                                                                                                            "nodeId"].unique())
     if SHOW_CONFIRMATION_SET_PERFORMANCE:
         X_confirmation, y_confirmation = get_X_and_y_for_df(confirmation_df)
         X_master, y_master = get_X_and_y_for_df(master_df)
@@ -417,68 +456,158 @@ if __name__ == "__main__":
     pass
 
 """
-10-fold cross validation vs oversampled test sets
+Random Search Results:
+Pipeline(memory=None,
+         steps=[('classification',
+                 KNeighborsClassifier(algorithm='auto', leaf_size=30,
+                                      metric='minkowski', metric_params=None,
+                                      n_jobs=None, n_neighbors=5, p=2,
+                                      weights='uniform'))],
+         verbose=False)
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 10, 'classification__algorithm': 'auto'}
 
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 10, 'classification__algorithm': 'brute'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 20, 'classification__algorithm': 'kd_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'ball_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'kd_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'auto'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 30, 'classification__algorithm': 'ball_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 30, 'classification__algorithm': 'auto'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'brute'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 10, 'classification__algorithm': 'ball_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'ball_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'auto'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 150, 'classification__algorithm': 'kd_tree'}
+
+Model with rank: 1
+Mean validation score: 0.941 (std: 0.032)
+Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'brute'}
+
+Pipeline(memory=None,
+         steps=[('sampling',
+                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
+                ('classification',
+                 MLPClassifier(activation='relu', alpha=0.0001,
+                               batch_size='auto', beta_1=0.9, beta_2=0.999,
+                               early_stopping=False, epsilon=1e-08,
+                               hidden_layer_sizes=(100,),
+                               learning_rate='constant',
+                               learning_rate_init=0.001, max_fun=15000,
+                               max_iter=200, momentum=0.9, n_iter_no_change=10,
+                               nesterovs_momentum=True, power_t=0.5,
+                               random_state=None, shuffle=True, solver='adam',
+                               tol=0.0001, validation_fraction=0.1,
+                               verbose=False, warm_start=False))],
+         verbose=False)
+Model with rank: 1
+Mean validation score: 0.953 (std: 0.018)
+Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 300, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.7206236910652511, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__solver': 'adam'}
+
+Model with rank: 2
+Mean validation score: 0.951 (std: 0.026)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.5836529550613099, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__solver': 'lbfgs'}
+
+Model with rank: 2
+Mean validation score: 0.951 (std: 0.026)
+Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.01, 'classification__beta_1': 0.1, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.0397139386434362, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__solver': 'lbfgs'}
+
+Pipeline(memory=None,
+         steps=[('sampling',
+                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
+                ('classification',
+                 RandomForestClassifier(bootstrap=True, ccp_alpha=0.0,
+                                        class_weight=None, criterion='gini',
+                                        max_depth=None, max_features='auto',
+                                        max_leaf_nodes=None, max_samples=None,
+                                        min_impurity_decrease=0.0,
+                                        min_impurity_split=None,
+                                        min_samples_leaf=1, min_samples_split=2,
+                                        min_weight_fraction_leaf=0.0,
+                                        n_estimators=100, n_jobs=None,
+                                        oob_score=False, random_state=None,
+                                        verbose=0, warm_start=False))],
+         verbose=False)
+Model with rank: 1
+Mean validation score: 0.969 (std: 0.027)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': None}
+
+Model with rank: 1
+Mean validation score: 0.969 (std: 0.027)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
+
+Model with rank: 3
+Mean validation score: 0.968 (std: 0.031)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 250, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': None}
+
+Model with rank: 3
+Mean validation score: 0.968 (std: 0.031)
+Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 250, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
+
+
+
+
+
+
+Confirmation set results:
 K Nearest Neighbor
-Mean accuracy 0.9483193277310924
-Mean roc_auc 0.9919332505729564
-Mean f1_score 0.9415957444485946
-Mean precision 0.9633945547916136
-Mean recall 0.9483193277310924
+accuracy 0.9337349397590361
+balanced accuracy 0.9189236111111111
 
-Feed Forward Neural Network
-Mean accuracy 0.9507352941176471
-Mean roc_auc 0.9990252066735785
-Mean f1_score 0.9453727420265847
-Mean precision 0.9659520626432391
-Mean recall 0.9507352941176471
+K Nearest Neighbor Random Searched
+accuracy 0.9337349397590361
+balanced accuracy 0.9163194444444444
 
-Multinomial Naive Bayes
-Mean accuracy 0.8835084033613445
-Mean roc_auc 0.9982071805995124
-Mean f1_score 0.8634469694893274
-Mean precision 0.9177850213511978
-Mean recall 0.8835084033613445
+Feed Forward Neural Network 11th Mar Random Search
+accuracy 0.9337349397590361
+balanced accuracy 0.9147569444444443
 
-Random searched MLP
-Mean accuracy 0.9444327731092437
-Mean roc_auc 0.9988593448743134
-Mean f1_score 0.9372378745821652
-Mean precision 0.9602630457777517
-Mean recall 0.9444327731092437
+MLP 11th Mar Random Search pipeline
+accuracy 0.927710843373494
+balanced accuracy 0.9085069444444444
 
-Random searched Random Forest
-Mean accuracy 0.9688025210084034
-Mean roc_auc 0.9997070276974426
-Mean f1_score 0.9642325638858602
-Mean precision 0.9789105502340797
-Mean recall 0.9688025210084034
+Random Forest
+accuracy 0.9698795180722891
+balanced accuracy 0.9609375
 
-SVC
-Mean accuracy 0.9588235294117647
-Mean roc_auc 0.9994311360908
-Mean f1_score 0.9535847723120078
-Mean precision 0.968893818599701
-Mean recall 0.9588235294117647
+Random Searched 11th mar Random Forest
+accuracy 0.9759036144578314
+balanced accuracy 0.96875
 
-AdaBoost Classifier
-Mean accuracy 0.9507878151260504
-Mean roc_auc 0.9993759151387828
-Mean f1_score 0.943926636664328
-Mean precision 0.9687091666503431
-Mean recall 0.9507878151260504
-
-Gradient Boosting Classifier
-Mean accuracy 0.9415966386554622
-Mean roc_auc 0.996313496989705
-Mean f1_score 0.9341724754539202
-Mean precision 0.958873838579721
-Mean recall 0.9415966386554622
-
-Bagging Classifier
-Mean accuracy 0.9434348739495798
-Mean roc_auc 0.9991024250609335
-Mean f1_score 0.9354250884539084
-Mean precision 0.9597535389447154
-Mean recall 0.9434348739495798
 """

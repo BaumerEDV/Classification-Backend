@@ -1,0 +1,2 @@
+id;name;type;areaName;levelId;x;y;mode;sector;completed
+VielberthGebaeude.1.77;Wickelraum;branch;VielberthGebaeude;1;1345.00;1338.00;DATA;N;false

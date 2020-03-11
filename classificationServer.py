@@ -23,11 +23,14 @@ def get_classification_result_as_dict(measurement_dict):
     # TODO: if you were to transform the timestamp into more sophisticated forms of data, you'd do it here
     feature_vector = pd.concat(
         [FEATURES_HEAD, measurement_df[FEATURES_HEAD.columns.intersection(measurement_df.columns)]], sort=False)
-    #feature_vector["pressure"].fillna(PRESSURE_NA_FILL_VALUE, inplace=True)
+    # feature_vector["pressure"].fillna(PRESSURE_NA_FILL_VALUE, inplace=True)
     feature_vector.fillna(DBM_NA_FILL_VALUE, inplace=True)
     feature_vector = SCALER.transform(feature_vector)
     predictions = CLASSIFIER.predict_proba(feature_vector)
     result = dict(zip(CLASSIFIER.classes_, predictions[0].tolist()))
+    for nodeId, probability in result.items():
+        if probability == 0:
+            result.pop(nodeId)
     index_of_highest_likelihood_prediction = np.where(predictions[0] == np.amax(predictions[0]))[0][0]
     result["prediction"] = CLASSIFIER.classes_[index_of_highest_likelihood_prediction]
     return result
@@ -67,6 +70,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         length = int(self.headers['content-length'])
         try:
             measurement = json.loads(self.rfile.read(length))
+            # TODO: you might have to add .decode("utf-8") after length) depending on your operating system (will raise an error that bytearray isn't a string if you do not)
         except json.decoder.JSONDecodeError:
             self.send_response(STATUS_CODE_BAD_REQUEST)
             self.end_headers()
