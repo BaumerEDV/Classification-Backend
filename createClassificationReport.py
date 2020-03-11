@@ -51,64 +51,175 @@ SCALER = SCALERS[0]
 OVERSAMPLE_ALL_CLASSIFIERS = False
 SHOW_VALIDATION_SET_PERFORMANCE = False
 SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = False
-SHOW_CONFIRMATION_SET_PERFORMANCE = True
+SHOW_CONFIRMATION_SET_PERFORMANCE = False
 SUPPRESS_ALL_WARNINGS = True
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
+    # {
+    #    "name": "K(3) Nearest Neighbor",
+    #    "classifier": Pipeline([
+    #        # ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", KNeighborsClassifier())
+    #    ]),
+    #    "param_dist": {
+    #        "classification__n_neighbors": [3, 4, 5, 6],
+    #        "classification__weights": ["uniform", "distance"],
+    #        "classification__algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
+    #        "classification__leaf_size": [10, 20, 30, 75, 150, 300],
+    #        "classification__p": [1, 2],
+    #        "classification__n_jobs": [-1]
+    #    },
+    #    "iterations": 250
+    # },
+    # {
+    #    "name": "Feed Forward Neural Network",
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", MLPClassifier())
+    #    ]),
+    #    "param_dist": {
+    #        "classification__hidden_layer_sizes": [50, 75, 100, 125, 140, 300, (100, 100)],
+    #        "classification__activation": ["identity", "logistic", "tanh", "relu"],
+    #        "classification__solver": ["lbfgs", "sgd", "adam"],
+    #        "classification__alpha": [1e-5, 1e-4, 1e-3, 1e-2],
+    #        "classification__learning_rate": ["constant", "invscaling", "adaptive"],
+    #        "classification__learning_rate_init": [1e-4, 1e-3, 1e-2],
+    #        "classification__max_iter": [500, 700, 1000],
+    #        "classification__random_state": [42],
+    #        "classification__momentum": stats.uniform(0, 1),
+    #        "classification__nesterovs_momentum": [False, True],
+    #        "classification__beta_1": [0.9999, 0.9, 0.8, 0.5, 0.1],
+    #        "classification__beta_2": [0.9999, 0.999, 0.99, 0.9],
+    #    },
+    #    "iterations": 1000
+    # },
+    # {
+    #    "name": "Random Forest Classifier",
+    #    "classifier": Pipeline([
+    #        ("sampling", RandomOverSampler(random_state=42)),
+    #        ("classification", RandomForestClassifier())
+    #    ]),
+    #    "param_dist": {
+    #        "classification__n_estimators": [10, 50, 100, 125, 150, 175, 200, 250, 300],
+    #        "classification__criterion": ["gini", "entropy"],
+    #        "classification__max_features": ["sqrt", "log2", "auto"],
+    #        "classification__n_jobs": [-1],
+    #        "classification__random_state": [42],
+    #        "classification__class_weight": [None, "balanced"]
+    #    },
+    #    "iterations": 120
+    # },
     {
-        "name": "K(3) Nearest Neighbor",
-        "classifier": Pipeline([
-            # ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", KNeighborsClassifier())
-        ]),
-        "param_dist": {
-            "classification__n_neighbors": [3, 4, 5, 6],
-            "classification__weights": ["uniform", "distance"],
-            "classification__algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
-            "classification__leaf_size": [10, 20, 30, 75, 150, 300],
-            "classification__p": [1, 2],
-            "classification__n_jobs": [-1]
-        },
-        "iterations": 250
-    },
-    {
-        "name": "Feed Forward Neural Network",
+        "name": "Multinomial Naive Bayes",
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", MLPClassifier())
+            ("classification", MultinomialNB())
         ]),
         "param_dist": {
-            "classification__hidden_layer_sizes": [50, 75, 100, 125, 140, 300, (100, 100)],
-            "classification__activation": ["identity", "logistic", "tanh", "relu"],
-            "classification__solver": ["lbfgs", "sgd", "adam"],
-            "classification__alpha": [1e-5, 1e-4, 1e-3, 1e-2],
-            "classification__learning_rate": ["constant", "invscaling", "adaptive"],
-            "classification__learning_rate_init": [1e-4, 1e-3, 1e-2],
-            "classification__max_iter": [500, 700, 1000],
+            "classification__alpha": stats.uniform(0, 1),
+            "classification__fit_prior": [False, True],
+            "classification__class_prior": [None, [1 / 32] * 32]  # 32 is the number of classes
+        },
+        "iterations": 100
+    },
+    {
+        "name": "SVC",  # equal with pipeline
+        "classifier": Pipeline([
+            ("classification", SVC())
+        ]),
+        "param_dist": {
             "classification__random_state": [42],
-            "classification__momentum": stats.uniform(0, 1),
-            "classification__nesterovs_momentum": [False, True],
-            "classification__beta_1": [0.9999, 0.9, 0.8, 0.5, 0.1],
-            "classification__beta_2": [0.9999, 0.999, 0.99, 0.9],
+            "classification__C": stats.uniform(0, 10),
+            "classification__kernel": ["linear", "poly", "rbf", "sigmoid", "precomputed"],
+            "classification__degree": [2, 3, 4, 15, 30, 50, 100],
+            "classification__gamme": ["scale", "auto"],
+            "classification__coef0": stats.uniform(-5, 5),
+            "classification__shrinking": [False, True],
+            "classification__tol": [1e-3, 1e-4, 1e-2, 1e-5],
+            "classification__decision_function_shape": ["ovo", "ovr"],
+        },
+        "iterations": 2000,
+    },
+    {
+        "name": "AdaBoost",  # equal with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
+                                                  n_estimators=200, random_state=42))
+        ]),
+        "param_dist": {
+            "classification__random_state": [42],
+            "classification__base_estimator": [DecisionTreeClassifier(max_depth=1, random_state=42),
+                                               DecisionTreeClassifier(max_depth=2, random_state=42),
+                                               DecisionTreeClassifier(max_depth=3, random_state=42),
+                                               DecisionTreeClassifier(max_depth=4, random_state=42),
+                                               DecisionTreeClassifier(max_depth=5, random_state=42),
+                                               DecisionTreeClassifier(max_depth=6, random_state=42),
+                                               DecisionTreeClassifier(max_depth=7, random_state=42),
+                                               DecisionTreeClassifier(max_depth=8, random_state=42),
+                                               DecisionTreeClassifier(max_depth=9, random_state=42),
+                                               DecisionTreeClassifier(max_depth=10, random_state=42),
+                                               DecisionTreeClassifier(max_depth=11, random_state=42),
+                                               DecisionTreeClassifier(max_depth=12, random_state=42),
+                                               DecisionTreeClassifier(max_depth=13, random_state=42),
+                                               DecisionTreeClassifier(max_depth=14, random_state=42),
+                                               DecisionTreeClassifier(max_depth=15, random_state=42)],
+            "classification__n_estimators": [30, 50, 70, 80, 100, 150, 200, 250, 300, 400, 500],
+            "classification__learning_rate": [0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.3, 1.6, 2, 5],
+            "classification__algorithm": ["SAMME", "SAMME.R"]
         },
         "iterations": 1000
     },
     {
-        "name": "Random Forest Classifier",
+        "name": "Gradient Boosting Classifier",  # better with pipeline
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", RandomForestClassifier())
+            (
+            "classification", GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
         ]),
+        "iterations": 1000,
         "param_dist": {
-            "classification__n_estimators": [10, 50, 100, 125, 150, 175, 200, 250, 300],
-            "classification__criterion": ["gini", "entropy"],
-            "classification__max_features": ["sqrt", "log2", "auto"],
-            "classification__n_jobs": [-1],
             "classification__random_state": [42],
-            "classification__class_weight": [None, "balanced"]
-        },
-        "iterations": 120
-    }
+            "classification__n_estimators": [30, 50, 70, 80, 100, 150, 200, 250, 300, 400, 500],
+            "classification__max_depth": [1, 2, 3, 4, 5, 10, 15, 20],
+            "classification__subsample": stats.uniform(0, 1),
+            "classification__learning_rate": [0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.3, 1.6, 2, 5],
+            "classification__max_features": ["sqrt", "log2", "None"],
+            "classification__tol": [1e-3, 1e-4, 1e-2, 1e-5],
+        }
+    },
+    {
+        "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", BaggingClassifier())
+        ]),
+        "iterations": 2000,
+        "param_dist": {
+            "classification__random_state": [42],
+            "classification__n_estimators": [30, 50, 70, 80, 100, 150, 200, 250, 300, 400, 500],
+            "classification__n_jobs": [-1],
+            "classification__base_estimator": [DecisionTreeClassifier(max_depth=1, random_state=42),
+                                               DecisionTreeClassifier(max_depth=2, random_state=42),
+                                               DecisionTreeClassifier(max_depth=3, random_state=42),
+                                               DecisionTreeClassifier(max_depth=4, random_state=42),
+                                               DecisionTreeClassifier(max_depth=5, random_state=42),
+                                               DecisionTreeClassifier(max_depth=6, random_state=42),
+                                               DecisionTreeClassifier(max_depth=7, random_state=42),
+                                               DecisionTreeClassifier(max_depth=8, random_state=42),
+                                               DecisionTreeClassifier(max_depth=9, random_state=42),
+                                               DecisionTreeClassifier(max_depth=10, random_state=42),
+                                               DecisionTreeClassifier(max_depth=11, random_state=42),
+                                               DecisionTreeClassifier(max_depth=12, random_state=42),
+                                               DecisionTreeClassifier(max_depth=13, random_state=42),
+                                               DecisionTreeClassifier(max_depth=14, random_state=42),
+                                               DecisionTreeClassifier(max_depth=15, random_state=42),
+                                               DecisionTreeClassifier(max_depth=16, random_state=42),
+                                               DecisionTreeClassifier(max_depth=17, random_state=42),
+                                               DecisionTreeClassifier(max_depth=18, random_state=42)],
+            "classification__oob_score": [True, False],
+        }
+    },
 ]
 CLASSIFIERS_FOR_EVALUATION = [
     {
@@ -133,7 +244,7 @@ CLASSIFIERS_FOR_EVALUATION = [
                                     max_iter=700, momentum=0.7206236910652511, nesterovs_momentum=False,
                                     random_state=42, solver="adam"),
     },
-    #{
+    # {
     #    "name": "MLP 11th Mar Random Search pipeline",
     #    "classifier": Pipeline([
     #        ("sampling", RandomOverSampler(random_state=42)),
@@ -142,7 +253,7 @@ CLASSIFIERS_FOR_EVALUATION = [
     #                                         max_iter=700, momentum=0.7206236910652511, nesterovs_momentum=False,
     #                                         random_state=42, solver="adam"))
     #    ])
-    #},
+    # },
     # {
     #    "name": "Multinomial Naive Bayes",  # better with pipeline
     #    "classifier": Pipeline([
@@ -177,10 +288,6 @@ CLASSIFIERS_FOR_EVALUATION = [
     #    "name": "SVC",  # equal with pipeline
     #    "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
     # },
-    # {  # commented out because this one takes forever and only goes up to about 70%
-    #    "name": "Gaussian Process Classifier", # better with pipeline
-    #    "classifier": GaussianProcessClassifier(1.5 * RBF(10.0), random_state=42)
-    # },
     # {
     #    "name": "AdaBoost Classifier",  # better with pipeline
     #    "classifier": Pipeline([
@@ -188,10 +295,6 @@ CLASSIFIERS_FOR_EVALUATION = [
     #        ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
     #                                              n_estimators=200, random_state=42))
     #    ])
-    # },
-    # {  # Features are collinear so this is useless
-    #    "name": "QuadraticDiscriminantAnalysis", # worse with pipeline
-    #    "classifier": QuadraticDiscriminantAnalysis()
     # },
     # {
     #    "name": "Gradient Boosting Classifier",  # better with pipeline
