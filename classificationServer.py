@@ -28,7 +28,7 @@ def get_classification_result_as_dict(measurement_dict):
     feature_vector = SCALER.transform(feature_vector)
     predictions = CLASSIFIER.predict_proba(feature_vector)
     result = dict(zip(CLASSIFIER.classes_, predictions[0].tolist()))
-    for nodeId, probability in result.items():
+    for nodeId, probability in list(result.items()):
         if probability == 0:
             result.pop(nodeId)
     index_of_highest_likelihood_prediction = np.where(predictions[0] == np.amax(predictions[0]))[0][0]

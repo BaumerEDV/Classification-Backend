@@ -37,7 +37,7 @@ import warnings
 
 K_FOLD_NUMBER = 5
 RANDOMIZED_SEARCH_ITERATIONS = 10
-SKIP_SEARCH = True # TODO: put searched SVC, AdaBoost, GradientBoost, Bagging into the Kfold classifiers
+SKIP_SEARCH = True
 OVERSAMPLE_VALIDATION_DATASET = False
 OVERSAMPLE_KFOLD_VALIDATION_DATASETS = False
 KFOLD_TEST_UPPER_STORIES_ONLY = False
@@ -51,8 +51,8 @@ SCALER = SCALERS[0]
 OVERSAMPLE_ALL_CLASSIFIERS = False
 SHOW_VALIDATION_SET_PERFORMANCE = False
 SHOW_KFOLD_CROSS_VALIDATION_PERFORMANCE = False
-SHOW_CONFIRMATION_SET_PERFORMANCE = False
-SUPPRESS_ALL_WARNINGS = True
+SHOW_CONFIRMATION_SET_PERFORMANCE = True
+SUPPRESS_ALL_WARNINGS = False
 
 CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     # {
@@ -109,7 +109,7 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     #    },
     #    "iterations": 120
     # },
-    #{
+    # {
     #    "name": "Multinomial Naive Bayes",
     #    "classifier": Pipeline([
     #        ("sampling", RandomOverSampler(random_state=42)),
@@ -121,7 +121,7 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
     #        "classification__class_prior": [None, [1 / 32] * 32]  # 32 is the number of classes
     #    },
     #    "iterations": 100
-    #},
+    # },
     {
         "name": "SVC",  # equal with pipeline
         "classifier": Pipeline([
@@ -174,7 +174,8 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
             (
-            "classification", GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
+                "classification",
+                GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
         ]),
         "iterations": 100,
         "param_dist": {
@@ -222,99 +223,94 @@ CLASSIFIERS_WITH_HYPERPARAMETER_DISTRIBUTIONS = [
 CLASSIFIERS_FOR_EVALUATION = [
     {
         "name": "K Nearest Neighbor",  # worse with pipeline
-        "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=4,
-                                           n_jobs=-1, leaf_size=300, algorithm='auto'),
-    },
-    {
-        "name": "K Nearest Neighbor Random Searched",  # worse with pipeline
         "classifier": KNeighborsClassifier(weights='distance', p=1, n_neighbors=3,
                                            n_jobs=-1, leaf_size=10, algorithm='auto'),
     },
-    # {
-    #    "name": "Feed Forward Neural Network",  # worse with pipeline
-    #    "classifier": MLPClassifier(hidden_layer_sizes=140, max_iter=500,
-    #                                random_state=42),
-    # },
     {
-        "name": "Feed Forward Neural Network 11th Mar Random Search",  # worse with pipeline
+        "name": "Feed Forward Neural Network",  # worse with pipeline
         "classifier": MLPClassifier(activation="logistic", alpha=0.01, beta_1=0.9, beta_2=0.999,
                                     hidden_layer_sizes=300, learning_rate="constant", learning_rate_init=0.001,
                                     max_iter=700, momentum=0.7206236910652511, nesterovs_momentum=False,
                                     random_state=42, solver="adam"),
     },
-    # {
-    #    "name": "MLP 11th Mar Random Search pipeline",
-    #    "classifier": Pipeline([
-    #        ("sampling", RandomOverSampler(random_state=42)),
-    #        ("classification", MLPClassifier(activation="logistic", alpha=0.01, beta_1=0.9, beta_2=0.999,
-    #                                         hidden_layer_sizes=300, learning_rate="constant", learning_rate_init=0.001,
-    #                                         max_iter=700, momentum=0.7206236910652511, nesterovs_momentum=False,
-    #                                         random_state=42, solver="adam"))
-    #    ])
-    # },
-    # {
-    #    "name": "Multinomial Naive Bayes",  # better with pipeline
-    #    "classifier": Pipeline([
-    #        ("sampling", RandomOverSampler(random_state=42)),
-    #        ("classification", MultinomialNB())
-    #    ]),
-    # },
-    # {
-    #    "name": "Random searched MLP",  # worse with pipeline
-    #    "classifier": MLPClassifier(activation='tanh', alpha=1e-05, beta_1=0.1, beta_2=0.99, hidden_layer_sizes=450,
-    #                                learning_rate='invscaling', learning_rate_init=0.001, max_iter=1000,
-    #                                momentum=0.5009070908512535, nesterovs_momentum=True, random_state=42,
-    #                                shuffle=False, solver='lbfgs')
-    # },
     {
-        "name": "Random Forest",  # better with pipeline
+        "name": "Multinomial Naive Bayes",  # better with pipeline
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
-            ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
-                                                      criterion='gini', class_weight=None))
-        ])
+            ("classification", MultinomialNB(alpha=0.11678761101807189, class_prior=[1 / 32] * 32, fit_prior=False))
+            # 32 is the number of classes, this must be changed if number of classes changes
+        ]),
     },
     {
-        "name": "Random Searched 11th mar Random Forest",  # better with pipeline
+        "name": "Random Forest",  # better with pipeline
         "classifier": Pipeline([
             ("sampling", RandomOverSampler(random_state=42)),
             ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='log2',
                                                       criterion='gini', class_weight=None))
         ])
     },
-    # {
-    #    "name": "SVC",  # equal with pipeline
-    #    "classifier": SVC(kernel="linear", C=0.95, probability=True, random_state=42)
-    # },
-    # {
-    #    "name": "AdaBoost Classifier",  # better with pipeline
-    #    "classifier": Pipeline([
-    #        ("sampling", RandomOverSampler(random_state=42)),
-    #        ("classification", AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=10, random_state=42),
-    #                                              n_estimators=200, random_state=42))
-    #    ])
-    # },
-    # {
-    #    "name": "Gradient Boosting Classifier",  # better with pipeline
-    #    "classifier": Pipeline([
-    #        ("sampling", RandomOverSampler(random_state=42)),
-    #        (
-    #            "classification",
-    #            GradientBoostingClassifier(random_state=42, n_estimators=400, max_depth=5, subsample=0.5))
-    #    ])
-    # },
-    # {
-    #    "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
-    #    "classifier": Pipeline([
-    #        ("sampling", RandomOverSampler(random_state=42)),
-    #        ("classification", BaggingClassifier(n_estimators=200, random_state=42, n_jobs=-1,
-    #                                             base_estimator=DecisionTreeClassifier(random_state=42, max_depth=15)))
-    #    ])
-    # },  # maybe try a voting classifier?
+    {
+        "name": "SVC",  # equal with pipeline
+        "classifier": SVC(kernel="linear", C=0.5533914322723179, coef0=-1.5082623301547131,
+                          decision_function_shape="ovo", degree=3, gamma="auto", shrinking=False, probability=True,
+                          random_state=42)
+    },
+    {
+        "name": "AdaBoost Classifier",  # better with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", AdaBoostClassifier(random_state=42, n_estimators=100, learning_rate=0.9,
+                                                  base_estimator=DecisionTreeClassifier(ccp_alpha=0.0,
+                                                                                        class_weight=None,
+                                                                                        criterion="gini", max_depth=12,
+                                                                                        max_features=None,
+                                                                                        max_leaf_nodes=None,
+                                                                                        min_impurity_decrease=0.0,
+                                                                                        min_impurity_split=None,
+                                                                                        min_samples_leaf=1,
+                                                                                        min_samples_split=2,
+                                                                                        min_weight_fraction_leaf=0.0,
+                                                                                        presort="deprecated",
+                                                                                        random_state=42,
+                                                                                        splitter="best"),
+                                                  algorithm="SAMME.R"))
+        ])
+    },
+    {
+        "name": "Gradient Boosting Classifier",  # better with pipeline
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            (
+                "classification",
+                GradientBoostingClassifier(learning_rate=0.1, max_depth=3, max_features="sqrt", n_estimators=400,
+                                           random_state=42, subsample=0.21503475283023676))
+        ])
+    },
+    {
+        "name": "Bagging Classifier",  # significantly better with pipeline - ties for best classifier
+        "classifier": Pipeline([
+            ("sampling", RandomOverSampler(random_state=42)),
+            ("classification", BaggingClassifier(random_state=42, oob_score=False, n_jobs=-1, n_estimators=200,
+                                                 base_estimator=DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None,
+                                                                                       criterion="gini", max_depth=18,
+                                                                                       max_features=None,
+                                                                                       max_leaf_nodes=None,
+                                                                                       min_impurity_decrease=0.0,
+                                                                                       min_impurity_split=None,
+                                                                                       min_samples_leaf=1,
+                                                                                       min_samples_split=2,
+                                                                                       min_weight_fraction_leaf=0.0,
+                                                                                       presort="deprecated",
+                                                                                       random_state=42,
+                                                                                       splitter="best")))
+        ])
+    },  # maybe try a voting classifier?
 ]
-MODEL_TO_SERIALIZE = RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='sqrt',
-                                            criterion='gini',
-                                            class_weight=None)
+MODEL_TO_SERIALIZE = Pipeline([
+    ("sampling", RandomOverSampler(random_state=42)),
+    ("classification", RandomForestClassifier(random_state=42, n_jobs=-1, n_estimators=200, max_features='log2',
+                                              criterion='gini', class_weight=None))
+])
 
 
 # from: https://scikit-learn.org/stable/auto_examples/model_selection/plot_randomized_search.html#sphx-glr-auto-examples-model-selection-plot-randomized-search-py
@@ -557,357 +553,36 @@ if __name__ == "__main__":
     pass
 
 """
-Random Search Results:
-Pipeline(memory=None,
-         steps=[('classification',
-                 KNeighborsClassifier(algorithm='auto', leaf_size=30,
-                                      metric='minkowski', metric_params=None,
-                                      n_jobs=None, n_neighbors=5, p=2,
-                                      weights='uniform'))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 10, 'classification__algorithm': 'auto'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 10, 'classification__algorithm': 'brute'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 20, 'classification__algorithm': 'kd_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'ball_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'kd_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'auto'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 30, 'classification__algorithm': 'ball_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 30, 'classification__algorithm': 'auto'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 300, 'classification__algorithm': 'brute'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 10, 'classification__algorithm': 'ball_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'ball_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'auto'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 150, 'classification__algorithm': 'kd_tree'}
-
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.032)
-Parameters: {'classification__weights': 'distance', 'classification__p': 1, 'classification__n_neighbors': 3, 'classification__n_jobs': -1, 'classification__leaf_size': 75, 'classification__algorithm': 'brute'}
-
-Pipeline(memory=None,
-         steps=[('sampling',
-                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
-                ('classification',
-                 MLPClassifier(activation='relu', alpha=0.0001,
-                               batch_size='auto', beta_1=0.9, beta_2=0.999,
-                               early_stopping=False, epsilon=1e-08,
-                               hidden_layer_sizes=(100,),
-                               learning_rate='constant',
-                               learning_rate_init=0.001, max_fun=15000,
-                               max_iter=200, momentum=0.9, n_iter_no_change=10,
-                               nesterovs_momentum=True, power_t=0.5,
-                               random_state=None, shuffle=True, solver='adam',
-                               tol=0.0001, validation_fraction=0.1,
-                               verbose=False, warm_start=False))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.953 (std: 0.018)
-Parameters: {'classification__activation': 'logistic', 'classification__alpha': 0.01, 'classification__beta_1': 0.9, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 300, 'classification__learning_rate': 'constant', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 700, 'classification__momentum': 0.7206236910652511, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__solver': 'adam'}
-
-Model with rank: 2
-Mean validation score: 0.951 (std: 0.026)
-Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.01, 'classification__beta_1': 0.8, 'classification__beta_2': 0.9999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'adaptive', 'classification__learning_rate_init': 0.001, 'classification__max_iter': 500, 'classification__momentum': 0.5836529550613099, 'classification__nesterovs_momentum': False, 'classification__random_state': 42, 'classification__solver': 'lbfgs'}
-
-Model with rank: 2
-Mean validation score: 0.951 (std: 0.026)
-Parameters: {'classification__activation': 'tanh', 'classification__alpha': 0.01, 'classification__beta_1': 0.1, 'classification__beta_2': 0.999, 'classification__hidden_layer_sizes': 50, 'classification__learning_rate': 'invscaling', 'classification__learning_rate_init': 0.0001, 'classification__max_iter': 1000, 'classification__momentum': 0.0397139386434362, 'classification__nesterovs_momentum': True, 'classification__random_state': 42, 'classification__solver': 'lbfgs'}
-
-Pipeline(memory=None,
-         steps=[('sampling',
-                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
-                ('classification',
-                 RandomForestClassifier(bootstrap=True, ccp_alpha=0.0,
-                                        class_weight=None, criterion='gini',
-                                        max_depth=None, max_features='auto',
-                                        max_leaf_nodes=None, max_samples=None,
-                                        min_impurity_decrease=0.0,
-                                        min_impurity_split=None,
-                                        min_samples_leaf=1, min_samples_split=2,
-                                        min_weight_fraction_leaf=0.0,
-                                        n_estimators=100, n_jobs=None,
-                                        oob_score=False, random_state=None,
-                                        verbose=0, warm_start=False))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.969 (std: 0.027)
-Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': None}
-
-Model with rank: 1
-Mean validation score: 0.969 (std: 0.027)
-Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
-
-Model with rank: 3
-Mean validation score: 0.968 (std: 0.031)
-Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 250, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': None}
-
-Model with rank: 3
-Mean validation score: 0.968 (std: 0.031)
-Parameters: {'classification__random_state': 42, 'classification__n_jobs': -1, 'classification__n_estimators': 250, 'classification__max_features': 'log2', 'classification__criterion': 'gini', 'classification__class_weight': 'balanced'}
-
-Pipeline(memory=None,
-         steps=[('sampling',
-                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
-                ('classification',
-                 MultinomialNB(alpha=1.0, class_prior=None, fit_prior=True))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.893 (std: 0.024)
-Parameters: {'classification__alpha': 0.11678761101807189, 'classification__class_prior': [0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125], 'classification__fit_prior': False}
-
-Model with rank: 2
-Mean validation score: 0.891 (std: 0.024)
-Parameters: {'classification__alpha': 0.13174192879755053, 'classification__class_prior': None, 'classification__fit_prior': False}
-
-Model with rank: 2
-Mean validation score: 0.891 (std: 0.024)
-Parameters: {'classification__alpha': 0.1358211599094079, 'classification__class_prior': None, 'classification__fit_prior': True}
-
-Model with rank: 2
-Mean validation score: 0.891 (std: 0.024)
-Parameters: {'classification__alpha': 0.13348944934925966, 'classification__class_prior': [0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125], 'classification__fit_prior': True}
-
-Model with rank: 2
-Mean validation score: 0.891 (std: 0.024)
-Parameters: {'classification__alpha': 0.14556758052324759, 'classification__class_prior': [0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125], 'classification__fit_prior': False}
-
-Model with rank: 2
-Mean validation score: 0.891 (std: 0.024)
-Parameters: {'classification__alpha': 0.1361999498992884, 'classification__class_prior': [0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125, 0.03125], 'classification__fit_prior': False}
-
-Pipeline(memory=None,
-         steps=[('classification',
-                 SVC(C=1.0, break_ties=False, cache_size=200, class_weight=None,
-                     coef0=0.0, decision_function_shape='ovr', degree=3,
-                     gamma='scale', kernel='rbf', max_iter=-1,
-                     probability=False, random_state=None, shrinking=True,
-                     tol=0.001, verbose=False))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.954 (std: 0.028)
-Parameters: {'classification__C': 0.5533914322723179, 'classification__coef0': -1.5082623301547131, 'classification__decision_function_shape': 'ovo', 'classification__degree': 3, 'classification__gamma': 'auto', 'classification__kernel': 'linear', 'classification__random_state': 42, 'classification__shrinking': False}
-
-Model with rank: 2
-Mean validation score: 0.949 (std: 0.032)
-Parameters: {'classification__C': 1.133367661248361, 'classification__coef0': -1.7647349120002866, 'classification__decision_function_shape': 'ovo', 'classification__degree': 2, 'classification__gamma': 'scale', 'classification__kernel': 'linear', 'classification__random_state': 42, 'classification__shrinking': True}
-
-Model with rank: 2
-Mean validation score: 0.949 (std: 0.037)
-Parameters: {'classification__C': 0.8467745295802356, 'classification__coef0': -4.780588371041917, 'classification__decision_function_shape': 'ovo', 'classification__degree': 100, 'classification__gamma': 'auto', 'classification__kernel': 'linear', 'classification__random_state': 42, 'classification__shrinking': True}
-
-Model with rank: 2
-Mean validation score: 0.949 (std: 0.032)
-Parameters: {'classification__C': 1.2450595207227337, 'classification__coef0': -1.2556901114649572, 'classification__decision_function_shape': 'ovr', 'classification__degree': 50, 'classification__gamma': 'scale', 'classification__kernel': 'linear', 'classification__random_state': 42, 'classification__shrinking': False}
-
-Model with rank: 2
-Mean validation score: 0.949 (std: 0.037)
-Parameters: {'classification__C': 1.001400332410173, 'classification__coef0': -1.9989776418873895, 'classification__decision_function_shape': 'ovr', 'classification__degree': 2, 'classification__gamma': 'auto', 'classification__kernel': 'linear', 'classification__random_state': 42, 'classification__shrinking': True}
-
-Pipeline(memory=None,
-         steps=[('sampling',
-                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
-                ('classification',
-                 AdaBoostClassifier(algorithm='SAMME.R',
-                                    base_estimator=DecisionTreeClassifier(ccp_alpha=0.0,
-                                                                          class_weight=None,
-                                                                          criterion='gini',
-                                                                          max_depth=10,
-                                                                          max_features=None,
-                                                                          max_leaf_nodes=None,
-                                                                          min_impurity_decrease=0.0,
-                                                                          min_impurity_split=None,
-                                                                          min_samples_leaf=1,
-                                                                          min_samples_split=2,
-                                                                          min_weight_fraction_leaf=0.0,
-                                                                          presort='deprecated',
-                                                                          random_state=42,
-                                                                          splitter='best'),
-                                    learning_rate=1.0, n_estimators=200,
-                                    random_state=42))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.973 (std: 0.022)
-Parameters: {'classification__random_state': 42, 'classification__n_estimators': 100, 'classification__learning_rate': 0.9, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=12, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best'), 'classification__algorithm': 'SAMME.R'}
-
-Model with rank: 2
-Mean validation score: 0.969 (std: 0.022)
-Parameters: {'classification__random_state': 42, 'classification__n_estimators': 400, 'classification__learning_rate': 1.6, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=13, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best'), 'classification__algorithm': 'SAMME.R'}
-
-Model with rank: 2
-Mean validation score: 0.969 (std: 0.018)
-Parameters: {'classification__random_state': 42, 'classification__n_estimators': 250, 'classification__learning_rate': 1.6, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=13, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best'), 'classification__algorithm': 'SAMME'}
-
-Pipeline(memory=None,
-         steps=[('sampling',
-                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
-                ('classification',
-                 GradientBoostingClassifier(ccp_alpha=0.0,
-                                            criterion='friedman_mse', init=None,
-                                            learning_rate=0.1, loss='deviance',
-                                            max_depth=5, max_features=None,
-                                            max_leaf_nodes=None,
-                                            min_impurity_decrease=0.0,
-                                            min_impurity_split=None,
-                                            min_samples_leaf=1,
-                                            min_samples_split=2,
-                                            min_weight_fraction_leaf=0.0,
-                                            n_estimators=400,
-                                            n_iter_no_change=None,
-                                            presort='deprecated',
-                                            random_state=42, subsample=0.5,
-                                            tol=0.0001, validation_fraction=0.1,
-                                            verbose=0, warm_start=False))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.953 (std: 0.049)
-Parameters: {'classification__learning_rate': 0.1, 'classification__max_depth': 3, 'classification__max_features': 'sqrt', 'classification__n_estimators': 400, 'classification__random_state': 42, 'classification__subsample': 0.21503475283023676}
-
-Model with rank: 2
-Mean validation score: 0.947 (std: 0.040)
-Parameters: {'classification__learning_rate': 0.1, 'classification__max_depth': 1, 'classification__max_features': 'log2', 'classification__n_estimators': 300, 'classification__random_state': 42, 'classification__subsample': 0.1799311385598379}
-
-Model with rank: 3
-Mean validation score: 0.945 (std: 0.036)
-Parameters: {'classification__learning_rate': 0.1, 'classification__max_depth': 2, 'classification__max_features': 'log2', 'classification__n_estimators': 250, 'classification__random_state': 42, 'classification__subsample': 0.1611715563131928}
-
-Pipeline(memory=None,
-         steps=[('sampling',
-                 RandomOverSampler(random_state=42, sampling_strategy='auto')),
-                ('classification',
-                 BaggingClassifier(base_estimator=None, bootstrap=True,
-                                   bootstrap_features=False, max_features=1.0,
-                                   max_samples=1.0, n_estimators=10,
-                                   n_jobs=None, oob_score=False,
-                                   random_state=None, verbose=0,
-                                   warm_start=False))],
-         verbose=False)
-Model with rank: 1
-Mean validation score: 0.941 (std: 0.026)
-Parameters: {'classification__random_state': 42, 'classification__oob_score': True, 'classification__n_jobs': -1, 'classification__n_estimators': 300, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=18, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best')}
-
-Model with rank: 2
-Mean validation score: 0.940 (std: 0.020)
-Parameters: {'classification__random_state': 42, 'classification__oob_score': False, 'classification__n_jobs': -1, 'classification__n_estimators': 200, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=18, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best')}
-
-Model with rank: 3
-Mean validation score: 0.939 (std: 0.027)
-Parameters: {'classification__random_state': 42, 'classification__oob_score': False, 'classification__n_jobs': -1, 'classification__n_estimators': 400, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=14, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best')}
-
-Model with rank: 3
-Mean validation score: 0.939 (std: 0.027)
-Parameters: {'classification__random_state': 42, 'classification__oob_score': False, 'classification__n_jobs': -1, 'classification__n_estimators': 400, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=15, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best')}
-
-Model with rank: 3
-Mean validation score: 0.939 (std: 0.027)
-Parameters: {'classification__random_state': 42, 'classification__oob_score': True, 'classification__n_jobs': -1, 'classification__n_estimators': 300, 'classification__base_estimator': DecisionTreeClassifier(ccp_alpha=0.0, class_weight=None, criterion='gini',
-                       max_depth=14, max_features=None, max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
-                       min_samples_leaf=1, min_samples_split=2,
-                       min_weight_fraction_leaf=0.0, presort='deprecated',
-                       random_state=42, splitter='best')}
-
-
-
-
-
-
-
-
-
-Confirmation set results:
 K Nearest Neighbor
-accuracy 0.9337349397590361
-balanced accuracy 0.9189236111111111
-
-K Nearest Neighbor Random Searched
 accuracy 0.9337349397590361
 balanced accuracy 0.9163194444444444
 
-Feed Forward Neural Network 11th Mar Random Search
+Feed Forward Neural Network
 accuracy 0.9337349397590361
 balanced accuracy 0.9147569444444443
 
-MLP 11th Mar Random Search pipeline
-accuracy 0.927710843373494
-balanced accuracy 0.9085069444444444
+Multinomial Naive Bayes
+accuracy 0.9036144578313253
+balanced accuracy 0.8908854166666667
 
 Random Forest
-accuracy 0.9698795180722891
-balanced accuracy 0.9609375
-
-Random Searched 11th mar Random Forest
 accuracy 0.9759036144578314
 balanced accuracy 0.96875
+
+SVC
+accuracy 0.9397590361445783
+balanced accuracy 0.9225694444444443
+
+AdaBoost Classifier
+accuracy 0.9518072289156626
+balanced accuracy 0.9434027777777778
+
+Gradient Boosting Classifier
+accuracy 0.9518072289156626
+balanced accuracy 0.9432291666666667
+
+Bagging Classifier
+accuracy 0.9457831325301205
+balanced accuracy 0.9354166666666667
 
 """
