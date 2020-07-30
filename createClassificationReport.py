@@ -553,6 +553,7 @@ if __name__ == "__main__":
     pass
 
 """
+info for confirmation dataset, using all master data for training
 K Nearest Neighbor
 accuracy 0.9337349397590361
 balanced accuracy 0.9163194444444444
