@@ -5,7 +5,7 @@ clint==0.4.1
 gerbil==1.5.6
 imbalanced-learn==0.6.2
 imblearn==0.0
-joblib==0.14.1
+joblib==1.2.0
 numpy==1.18.1
 pandas==1.0.1
 pip==10.0.1
